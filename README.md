@@ -1,2 +1,4 @@
 # MicroMacro.jl
-Uniformly accurate numerical schemes for highly oscillatory evolution equations
+
+Micro-Macro model with Uniformly accurate numerical scheme for  
+for the relativistic Klein–Gordon equation.
