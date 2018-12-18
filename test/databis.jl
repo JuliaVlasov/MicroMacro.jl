@@ -16,15 +16,12 @@ struct DataSet
     u         :: Vector{Float64}
     v         :: Vector{Float64}
     
-
     function DataSet( dataset, xmin, xmax, N, epsilon, Tfinal)
 
         k = 2 * pi / (xmax - xmin) * vcat(0:N÷2,N÷2-N:-1)
         T = 2 * pi
 
         Naffich = 1000
-        option_strang = 1
-        mode_affich = [2, 4, 6, 8, 10, 12, 14, 16]
 
         dx = (xmax - xmin) / N
         x  = range(xmin, stop=xmax, length=N+1)[1:end-1]
@@ -32,7 +29,7 @@ struct DataSet
         if dataset == 1
 
             # exemple Bao-Dong
-            phi     = 2 / (exp.(x .^ 2) + exp.(-x .^ 2))
+            phi     = 2 / (exp.(x .^ 2) .+ exp.(-x .^ 2))
             gamma   = 0 * x
             sigma   = 1
             llambda = -4
@@ -45,7 +42,7 @@ struct DataSet
 
             # exemple Faou-Schratz 6.3
             phi   = cos.(x)
-            gamma = 1 / 4 * sin(x) + 0.5 * cos(x)
+            gamma = 1 / 4 * sin(x) .+ 0.5 * cos(x)
 
             sigma   = 1
             llambda = -1
@@ -59,6 +56,9 @@ struct DataSet
             llambda = -1
 
         end
+
+        u = zeros(Float64, N)
+        v = zeros(Float64, N)
 
         @. u = phi - 1im * ifft((1 + epsilon * k^2) ^ (-1 / 2) * fft(gamma))
         @. v = conj(phi) - 1im * ifft((1 + epsilon * k ^ 2) ^ (-1 / 2) * fft(conj(gamma)))
