@@ -1,6 +1,6 @@
-function adjust_step(tbar, t, dt)
+function adjust_step(tbar :: Float64, t :: Float64, dt :: Float64)
 
-    lstat = 0
+    lstat  = 0
 
     if (abs(tbar - (t + dt)) / tbar < 1.e-15)
 
