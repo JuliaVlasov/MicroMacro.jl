@@ -10,12 +10,12 @@ function champs_2(t, fft_ubar, fft_vbar, fft_ug, fft_vg,
 
     champu_fft[1, :] .= 0.0
     champv_fft[1, :] .= 0.0
-
+dims=1
     dtauh1u = ifft(champu_fft, dims=1)
     dtauh1v = ifft(champv_fft, dims=1)
 
-    h1u = epsilon * ifft(champu_fft / (1im * Ktaubis), dims=1)
-    h1v = epsilon * ifft(champv_fft / (1im * Ktaubis), dims=1)
+    h1u = epsilon * ifft(champu_fft ./ (1im * Ktaubis), dims=1)
+    h1v = epsilon * ifft(champv_fft ./ (1im * Ktaubis), dims=1)
 
     C1u = fft_ubar .+ h1u
     C1v = fft_vbar .+ h1v
@@ -28,8 +28,8 @@ function champs_2(t, fft_ubar, fft_vbar, fft_ug, fft_vg,
 
     champu, champv = ftau(t, C1u, C1v, A1, A2, matr, conjmatr, sigma, llambda)
 
-    champu_fft = fft(champu, axis=0)
-    champv_fft = fft(champv, axis=0)
+    champu_fft = fft(champu, dims=1)
+    champv_fft = fft(champv, dims=1)
 
     champubaru = champu_fft[1, :] / Ntaumm
     champubarv = champv_fft[1, :] / Ntaumm
