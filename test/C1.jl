@@ -1,5 +1,6 @@
-function C1(t, fft_u, fft_v, A1, A2, 
-	    matr, conjmatr, sigma, 
+function C1(t, fft_u, fft_v,
+			A1, A2,
+	    	matr, conjmatr, sigma,
             llambda, Ktaubis, epsilon, Ntaumm)
 
     champu, champv = ftau(t, fft_u, fft_v, A1, A2, 
