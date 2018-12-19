@@ -1,3 +1,4 @@
+
 struct MicMac
 
     data :: DataSet

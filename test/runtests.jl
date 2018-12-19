@@ -3,37 +3,50 @@ using Plots
 
 include("error.jl")
 include("databis.jl")
+include("ftau.jl")
+include("dtd2uftau.jl")
+include("dtduftau.jl")
+include("dtftau.jl")
+include("duftau.jl")
+include("d2tduftau.jl")
+include("d2tftau.jl")
+include("d2uftau.jl")
+include("d3tftau.jl")
+include("d3uftau.jl")
+include("C1.jl")
+include("C2.jl")
+include("C3.jl")
 include("micmac.jl")
 
 dataset = 3
 
-tabepsilon = [10.0^(-i) for i in 0:6]
-tabschema  = [2]
+epsilons = [10.0^(-i) for i in 0:6]
+schemes  = [2]
 
-xmin        = 0
-xmax        = 2*pi
-T           = 2*pi
-tabsize_x   = [64]
-tabsize_tau = [64]
-Tfinal      = 0.25
+xmin     = 0
+xmax     = 2*pi
+T        = 2*pi
+size_x   = [16]
+size_tau = [8]
+Tfinal   = 0.25
 
 
 p = plot(layout=(1,2))
 
-nombre = 5 #nombre de valeurs de dt
-tabdt  = zeros(Float64, nombre)
-taberr = zeros(Float64, (length(tabepsilon), nombre))
+nb_dt  = 5 # different values of dt
+tabdt  = zeros(Float64, nb_dt)
+taberr = zeros(Float64, (length(epsilons), nb_dt))
 
-etime = @elapsed for N in tabsize_x, Ntaumm in tabsize_tau, schema_micmac in tabschema
+etime = @elapsed for N in size_x, Ntaumm in size_tau, schema_micmac in schemes
      
     numero = 0
-    for (kk, epsilon) in enumerate(tabepsilon)
+    for (kk, epsilon) in enumerate(epsilons)
 
         print(" $epsilon: ")
 
         data = DataSet(dataset, xmin, xmax, N, epsilon, Tfinal)
 
-        for hh in 1:nombre
+        for hh in 1:nb_dt
 
             print("$hh, ")
 
@@ -61,7 +74,6 @@ end
 xlabel!("dt")
 ylabel!("error")
 println("Elapsed time :", etime)
-
 
 for j in 1:size(taberr)[1]
     plot!(p[1,2], tabepsilon, taberr[:, j], label="dt=$tabdt[j]")
