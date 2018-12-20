@@ -2,7 +2,7 @@ function C3(t, fft_u, fft_v,
 	    A1, A2, 
 	    matr, conjmatr,
 	    sigma, llambda, 
-	    Ktaubis, epsilon, Ntaumm):
+	    Ktaubis, epsilon, Ntaumm)
 
     h1u, h1v = ftau(t, fft_u, fft_v, A1, A2, 
 		    matr, conjmatr, sigma, llambda)
@@ -57,8 +57,8 @@ function C3(t, fft_u, fft_v,
     champu_fft = fft(champu, dims=1)
     champv_fft = fft(champv, dims=1)
 
-    dtu1u = champu_fft[0, :] / Ntaumm
-    dtu1v = champv_fft[0, :] / Ntaumm
+    dtu1u = champu_fft[1, :] / Ntaumm
+    dtu1v = champv_fft[1, :] / Ntaumm
 
     h2u_fft[1, :] .= 0 
     h2v_fft[1, :] .= 0 
@@ -109,8 +109,8 @@ function C3(t, fft_u, fft_v,
     champu = champu1 + champu2 - dtth1u
     champv = champv1 + champv2 - dtth1v
 
-    champu_fft = fft(champu, axis=0)
-    champv_fft = fft(champv, axis=0)
+    champu_fft = fft(champu, dims=1)
+    champv_fft = fft(champv, dims=1)
 
     champu_fft[1, :] .= 0 
     champv_fft[1, :] .= 0 

@@ -433,8 +433,8 @@ function run(micmac :: MicMac, dt, Ntaumm, schema_micmac)
 
     end 
 
-    fft_u = exp(1j * sqrt(1 + epsilon * k^2) * t / epsilon) * fft_u
-    fft_v = exp(1j * sqrt(1 + epsilon * k^2) * t / epsilon) * fft_v
+    fft_u = exp(1im * sqrt(1 + epsilon * k^2) * t / epsilon) * fft_u
+    fft_v = exp(1im * sqrt(1 + epsilon * k^2) * t / epsilon) * fft_v
 
     u = ifft(fft_u)
     v = ifft(fft_v)

@@ -61,8 +61,8 @@ function champs_3(t, fft_ubar, fft_vbar, fft_ug, fft_vg,
     dtauh2u = ifft(h2u_fft, dims=1)
     dtauh2v = ifft(h2v_fft, dims=1)
 
-    h2u = epsilon * ifft(h2u_fft ./ (1j * Ktaubis), dims=1)
-    h2v = epsilon * ifft(h2v_fft ./ (1j * Ktaubis), dims=1)
+    h2u = epsilon * ifft(h2u_fft ./ (1im * Ktaubis), dims=1)
+    h2v = epsilon * ifft(h2v_fft ./ (1im * Ktaubis), dims=1)
 
     C2u = fft_ubar .+ h2u
     C2v = fft_vbar .+ h2v

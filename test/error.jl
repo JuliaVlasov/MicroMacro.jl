@@ -125,7 +125,7 @@ function erreur(u, v, epsilon, dataset)
     @. refH1 = sqrt.(dx * norm(ifft(1im * sqrt(1 + k^2) * fft(uvu)))^2 + dx * norm(
         ifft(1im * sqrt(1 + k^2) * fft(uvv)))^2)
     @. err = (sqrt(dx * norm(ifft(1im * sqrt(1 + k^2) * fft(u - uvu)))^2 + dx * norm(
-        ifft(1j * sqrt(1 + k^2) * fft(v - uvv)))^2)) / refH1
+        ifft(1im * sqrt(1 + k^2) * fft(v - uvv)))^2)) / refH1
 
     err
 

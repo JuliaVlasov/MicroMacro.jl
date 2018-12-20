@@ -72,19 +72,19 @@ function erreur(u, v, epsilon, dataset):
     x = sp.linspace(xmin, xmax - dx, NN)[None]
     dx = x[0, 1] - x[0, 0]
     k = 2 * pi / (xmax - xmin) * np.concatenate((np.arange(0, NN / 2, 1),
-                                                 np.arange(NN / 2 - NN, 0, 1)), axis=0)
+                                                 np.arange(NN / 2 - NN, 0, 1)), dims=1)
 
     if sp.shape(uv)[1] != NN
         uv = reconstr_x(uv, x, xmin, xmax)
     end
 
-    uvu = uv[0, :] + 1j * uv[1, :]
-    uvv = uv[2, :] + 1j * uv[3, :]
+    uvu = uv[0, :] + 1im * uv[1, :]
+    uvv = uv[2, :] + 1im * uv[3, :]
 
-    refH1 = sp.sqrt(dx * np.linalg.norm(ifft(1j * sp.sqrt(1 + k ** 2) * fft(uvu))) ** 2 + dx * np.linalg.norm(
-        ifft(1j * sp.sqrt(1 + k ** 2) * fft(uvv))) ** 2)
-    err = (sp.sqrt(dx * np.linalg.norm(ifft(1j * sp.sqrt(1 + k ** 2) * fft(u - uvu))) ** 2 + dx * np.linalg.norm(
-        ifft(1j * sp.sqrt(1 + k ** 2) * fft(v - uvv))) ** 2)) / refH1
+    refH1 = sp.sqrt(dx * np.linalg.norm(ifft(1im * sp.sqrt(1 + k .^ 2) * fft(uvu))) .^ 2 + dx * np.linalg.norm(
+        ifft(1im * sp.sqrt(1 + k .^ 2) * fft(uvv))) .^ 2)
+    err = (sp.sqrt(dx * np.linalg.norm(ifft(1im * sp.sqrt(1 + k .^ 2) * fft(u - uvu))) .^ 2 + dx * np.linalg.norm(
+        ifft(1im * sp.sqrt(1 + k .^ 2) * fft(v - uvv))) .^ 2)) / refH1
 
     return err
 
