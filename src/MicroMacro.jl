@@ -1,5 +1,5 @@
 module MicroMacro
 
-greet() = print("Hello World!")
+include("dataset.jl")
 
-end # module
+end

@@ -1,35 +1,35 @@
 using MicroMacro
 using Plots
 
-include("error.jl")
-include("databis.jl")
-include("ftau.jl")
-include("dtd2uftau.jl")
-include("dtduftau.jl")
-include("dtftau.jl")
-include("duftau.jl")
-include("d2tduftau.jl")
-include("d2tftau.jl")
-include("d2uftau.jl")
-include("d3tftau.jl")
-include("d3uftau.jl")
-include("C1.jl")
-include("C2.jl")
-include("C3.jl")
-include("micmac.jl")
-include("adjust_step.jl")
-include("champs_2.jl")
-include("champs_3.jl")
-include("champs_4.jl")
-include("databis.jl")
-include("energie_kgr.jl")
-include("ichampf.jl")
-include("init_2.jl")
-include("init_3.jl")
-include("init_4.jl")
-include("micmac.jl")
 include("reconstr.jl")
-include("reconstr_x.jl")
+include("test_reconstr.jl")
+include("ftau.jl")
+include("init_2.jl")
+include("micmac.jl")
+#include("error.jl")
+#include("dtd2uftau.jl")
+#include("dtduftau.jl")
+#include("dtftau.jl")
+#include("duftau.jl")
+#include("d2tduftau.jl")
+#include("d2tftau.jl")
+#include("d2uftau.jl")
+#include("d3tftau.jl")
+#include("d3uftau.jl")
+#include("C1.jl")
+#include("C2.jl")
+#include("C3.jl")
+#include("micmac.jl")
+#include("adjust_step.jl")
+#include("champs_2.jl")
+#include("champs_3.jl")
+#include("champs_4.jl")
+#include("databis.jl")
+#include("energie_kgr.jl")
+#include("ichampf.jl")
+#include("init_3.jl")
+#include("init_4.jl")
+#include("reconstr_x.jl")
 
 dataset = 3
 
@@ -39,10 +39,9 @@ schemes  = [2]
 xmin     = 0
 xmax     = 2*pi
 T        = 2*pi
-size_x   = [16]
-size_tau = [8]
+size_x   = [8]
+size_tau = [4]
 Tfinal   = 0.25
-
 
 p = plot(layout=(1,2))
 
@@ -52,7 +51,10 @@ taberr = zeros(Float64, (length(epsilons), nb_dt))
 
 etime = @elapsed for N in size_x, Ntaumm in size_tau, schema_micmac in schemes
      
-    numero = 0
+    println(" N                  : $N ")
+    println(" Ntaumm             : $Ntaumm ")
+    println(" Micro-Macro scheme : $schema_micmac ")
+
     for (kk, epsilon) in enumerate(epsilons)
 
         print(" $epsilon: ")
