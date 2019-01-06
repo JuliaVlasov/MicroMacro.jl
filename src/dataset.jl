@@ -17,8 +17,8 @@ struct DataSet
     Tfinal    :: Float64
     sigma     :: Int64
     llambda   :: Int64
-    u         :: Vector{ComplexF64}
-    v         :: Vector{ComplexF64}
+    u         :: Array{ComplexF64,1}
+    v         :: Array{ComplexF64,1}
     dx        :: Float64
     
     function DataSet( dataset, xmin, xmax, N, epsilon, Tfinal)
@@ -65,8 +65,8 @@ struct DataSet
 
         end
 
-        u = zeros(ComplexF64, N)
-        v = zeros(ComplexF64, N)
+	u = zeros(ComplexF64, N)
+	v = zeros(ComplexF64, N)
 
         u .= phi .- 1im * ifft((1 .+ epsilon * k.^2) .^ (-1/2) .* fft(gamma))
         v .= conj.(phi) .- 1im * ifft((1 .+ epsilon * k.^2) .^ (-1/2) .* fft(conj.(gamma)))

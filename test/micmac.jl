@@ -4,17 +4,17 @@ struct MicMac
 
     data :: DataSet
 
-end 
+end
 
 function run(micmac :: MicMac, dt, ntau, schema_micmac)
 
     Tfinal    = micmac.data.Tfinal
     N         = micmac.data.N
     T         = micmac.data.T
-    k         = micmac.data.k
+    k         = transpose(micmac.data.k)
 
-    u         = micmac.data.u
-    v         = micmac.data.v
+    u         = collect(transpose(micmac.data.u))
+    v         = collect(transpose(micmac.data.v))
 
     epsilon   = micmac.data.epsilon
 
@@ -31,11 +31,11 @@ function run(micmac :: MicMac, dt, ntau, schema_micmac)
 
     matr      = zeros(ComplexF64,ntau)
     conjmatr  = zeros(ComplexF64,ntau)
-    matr     .= exp.( 1im * tau) 
-    conjmatr .= exp.(-1im * tau) 
+    matr     .= exp.( 1im * tau)
+    conjmatr .= exp.(-1im * tau)
 
-    A1 = zeros(Float64, N)
-    A2 = zeros(Float64, N)
+    A1 = zeros(Float64, (1,N))
+    A2 = zeros(Float64, (1,N))
 
     if epsilon > 0
         A1 .= (sqrt.(1 .+ epsilon * k.^2) .- 1) / epsilon
@@ -49,6 +49,8 @@ function run(micmac :: MicMac, dt, ntau, schema_micmac)
     iter = 0
     tabt = [t]
 
+    fft_u = zeros(ComplexF64,(ntau,N))
+    fft_v = zeros(ComplexF64,(ntau,N))
 
     if schema_micmac == 0
 
@@ -65,11 +67,15 @@ function run(micmac :: MicMac, dt, ntau, schema_micmac)
         fft_vbar = fft(vbar)
         fft_ug = fft(ug)
         fft_vg = fft(vg)
-        
+
     elseif (schema_micmac == 2 || schema_micmac == 25)
+
 
         fft_u0 = fft(u)
         fft_v0 = fft(v)
+
+        println("fft_u0:", size(fft_u0))
+
         fft_ubar, fft_vbar, fft_ug, fft_vg = init_2(0, fft_u0, fft_v0, A1, A2,
                                                     matr, conjmatr,
                                                     sigma,
@@ -94,7 +100,7 @@ function run(micmac :: MicMac, dt, ntau, schema_micmac)
         fft_ubar, fft_vbar, fft_ug, fft_vg = init_4(0, fft_u0, fft_v0, A1, A2,
                                                     matr, conjmatr,
                                                     sigma,
-                                                    llambda, 
+                                                    llambda,
                                                     ktau, epsilon, ntau)
     end
 
@@ -435,7 +441,7 @@ function run(micmac :: MicMac, dt, ntau, schema_micmac)
 
         end
 
-    end 
+    end
 
     fft_u = exp(1im * sqrt(1 + epsilon * k^2) * t / epsilon) * fft_u
     fft_v = exp(1im * sqrt(1 + epsilon * k^2) * t / epsilon) * fft_v
@@ -446,4 +452,3 @@ function run(micmac :: MicMac, dt, ntau, schema_micmac)
     u, v
 
 end
-

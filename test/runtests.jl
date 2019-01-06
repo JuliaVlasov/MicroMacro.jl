@@ -4,7 +4,10 @@ using Plots
 include("reconstr.jl")
 include("test_reconstr.jl")
 include("ftau.jl")
+include("C1.jl")
 include("init_2.jl")
+include("champs_2.jl")
+include("adjust_step.jl")
 include("micmac.jl")
 #include("error.jl")
 #include("dtd2uftau.jl")
@@ -16,12 +19,10 @@ include("micmac.jl")
 #include("d2uftau.jl")
 #include("d3tftau.jl")
 #include("d3uftau.jl")
-#include("C1.jl")
 #include("C2.jl")
 #include("C3.jl")
 #include("micmac.jl")
 #include("adjust_step.jl")
-#include("champs_2.jl")
 #include("champs_3.jl")
 #include("champs_4.jl")
 #include("databis.jl")
@@ -50,7 +51,7 @@ tabdt  = zeros(Float64, nb_dt)
 taberr = zeros(Float64, (length(epsilons), nb_dt))
 
 etime = @elapsed for N in size_x, Ntaumm in size_tau, schema_micmac in schemes
-     
+
     println(" N                  : $N ")
     println(" Ntaumm             : $Ntaumm ")
     println(" Micro-Macro scheme : $schema_micmac ")
@@ -79,7 +80,7 @@ etime = @elapsed for N in size_x, Ntaumm in size_tau, schema_micmac in schemes
 
         println()
 
-        plot!(p[1,1], tabdt, taberr[kk, :], xaxis=:log, 
+        plot!(p[1,1], tabdt, taberr[kk, :], xaxis=:log,
               yaxis=:log, label="ϵ=$epsilon")
 
     end
