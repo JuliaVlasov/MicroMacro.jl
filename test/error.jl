@@ -80,49 +80,45 @@ function erreur(u, v, epsilon, dataset)
 
     uv = zeros(Float64, (4, 128))
 
-    open(fichier) do azerty
+    open(fichier) do f
 
-        for j in 1:128
-            uv[1, j] = parse(Float64, read(azerty, String))
-            uv[2, j] = parse(Float64, read(azerty, String))
-            uv[3, j] = parse(Float64, read(azerty, String))
-            uv[4, j] = parse(Float64, read(azerty, String))
-            dummy = read(azerty, String)
+        for (j,line) in enumerate(eachline(f))
+            for (i, v) in enumerate( [ parse(Float64, v) for v in split(line)]) 
+                uv[i, j] = v
+            end
         end
 
     end
 
+    nx   = size(u)[2]
+
     if dataset == 1
-        NN   = size(u)[2]
         xmin = -8
         xmax = 8
         t    = 0.4
     elseif dataset == 2
-        NN   = size(u)[2]
         xmin = 0
         xmax = 2 * pi
         t = 1
     elseif dataset == 3
-        NN = size(u)[2]
         xmin = 0
         xmax = 2 * pi
         T = 2 * pi
         t = 0.25
     end
 
-    dx = (xmax - xmin) / NN
-    x  = range(xmin, stop=xmax - dx, length=NN)
-    dx = x[1, 2] - x[1, 1]
-    k  = 2 * pi / (xmax - xmin) .* vcat(0:NN÷2-1, NN÷2-NN:0)
+    dx = (xmax - xmin) / nx
+    x  = collect(range(xmin, stop=xmax, length=nx+1)[1:end-1])
+    k  = collect(2 * pi / (xmax - xmin) * vcat(0:nx÷2-1,-nx÷2:-1))
 
-    if size(uv)[2] != NN
+    if size(uv)[2] != nx
         uv = reconstr_x(uv, x, xmin, xmax)
     end
 
     uvu = uv[1, :] .+ 1im * uv[2, :]
     uvv = uv[3, :] .+ 1im * uv[4, :]
 
-    @. refH1 = sqrt.(dx * norm(ifft(1im * sqrt(1 + k^2) * fft(uvu)))^2 + dx * norm(
+    @. refH1 = sqrt(dx * norm(ifft(1im * sqrt(1 + k^2) * fft(uvu)))^2 + dx * norm(
         ifft(1im * sqrt(1 + k^2) * fft(uvv)))^2)
     @. err = (sqrt(dx * norm(ifft(1im * sqrt(1 + k^2) * fft(u - uvu)))^2 + dx * norm(
         ifft(1im * sqrt(1 + k^2) * fft(v - uvv)))^2)) / refH1

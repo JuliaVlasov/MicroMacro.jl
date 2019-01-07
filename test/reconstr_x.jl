@@ -1,20 +1,19 @@
 function reconstr_x(u, x, xmin, xmax)
 
-    N = sp.shape(u)[1]
-    L = xmax - xmin
-    UA = sp.zeros((sp.shape(u)[0], 1))
-    v = fft(u) / N
+    ntau  = size(u)[1]
+    nx    = size(u)[2]
+    L     = xmax - xmin
+    UA    = zeros(ComplexF64, ntau)
+    v     = fft(u) / nx
 
-    for jj in range(N // 2)
-        vv = v[:, jj].reshape(sp.shape(v)[0], 1)
-        UA = UA + vv * exp(1im * 2 * pi / L * jj * (x - xmin))
+    for j in 1:ntau÷2
+        UA .+= v[:, j] .* exp.(1im * 2π / L * (j-1) * (x .- xmin))
     end
 
-    for jj in range(N // 2, N)
-        vv = v[:, jj].reshape(sp.shape(v)[0], 1)
-        UA = UA + vv * exp(1im * 2 * pi / L * (jj - N) * (x - xmin))
+    for j in ntau÷2+1:ntau
+        UA .+= v[:, j] .* exp.(1im * 2π / L * (j-1-nx) * (x .- xmin))
     end
 
-    return UA
+    UA
 
 end

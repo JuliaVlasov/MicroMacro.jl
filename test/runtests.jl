@@ -1,15 +1,15 @@
 using MicroMacro
 using Plots
 
-include("reconstr.jl")
-include("test_reconstr.jl")
-include("ftau.jl")
-include("C1.jl")
-include("init_2.jl")
-include("champs_2.jl")
-include("adjust_step.jl")
-include("micmac.jl")
-#include("error.jl")
+#include("reconstr.jl")
+#include("test_reconstr.jl")
+#include("ftau.jl")
+#include("C1.jl")
+#include("init_2.jl")
+#include("champs_2.jl")
+#include("adjust_step.jl")
+#include("micmac.jl")
+include("error.jl")
 #include("dtd2uftau.jl")
 #include("dtduftau.jl")
 #include("dtftau.jl")
@@ -30,16 +30,15 @@ include("micmac.jl")
 #include("ichampf.jl")
 #include("init_3.jl")
 #include("init_4.jl")
-#include("reconstr_x.jl")
+include("reconstr_x.jl")
 
 dataset = 3
 
 epsilons = [10.0^(-i) for i in 0:6]
-schemes  = [2]
 
 xmin     = 0
-xmax     = 2*pi
-T        = 2*pi
+xmax     = 2π
+T        = 2π
 size_x   = [8]
 size_tau = [4]
 Tfinal   = 0.25
@@ -50,17 +49,16 @@ nb_dt  = 5 # different values of dt
 tabdt  = zeros(Float64, nb_dt)
 taberr = zeros(Float64, (length(epsilons), nb_dt))
 
-etime = @elapsed for N in size_x, Ntaumm in size_tau, schema_micmac in schemes
+etime = @elapsed for nx in size_x, ntau in size_tau
 
-    println(" N                  : $N ")
-    println(" Ntaumm             : $Ntaumm ")
-    println(" Micro-Macro scheme : $schema_micmac ")
+    println(" nx                 : $nx ")
+    println(" ntau               : $ntau ")
 
     for (kk, epsilon) in enumerate(epsilons)
 
         print(" $epsilon: ")
 
-        data = DataSet(dataset, xmin, xmax, N, epsilon, Tfinal)
+        data = DataSet(dataset, xmin, xmax, nx, epsilon, Tfinal)
 
         for hh in 1:nb_dt
 
@@ -68,9 +66,9 @@ etime = @elapsed for N in size_x, Ntaumm in size_tau, schema_micmac in schemes
 
             dtmicmac = 2.0^(-hh) * data.Tfinal / 16
 
-            solver = MicMac(data)
+            solver = MicMac(data, ntau)
 
-            u, v = run(solver, dtmicmac, Ntaumm, schema_micmac)
+            u, v = solve(solver, dtmicmac, ntau)
 
             tabdt[hh] = dtmicmac
 

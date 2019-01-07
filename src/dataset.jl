@@ -10,7 +10,7 @@ Relativistic Klein-Gordon equation
 """
 struct DataSet
 
-    N         :: Int64  
+    nx        :: Int64  
     epsilon   :: Float64 
     k         :: Vector{Float64}
     T         :: Float64
@@ -21,18 +21,18 @@ struct DataSet
     v         :: Array{ComplexF64,1}
     dx        :: Float64
     
-    function DataSet( dataset, xmin, xmax, N, epsilon, Tfinal)
+    function DataSet( dataset, xmin, xmax, nx, epsilon, Tfinal)
 
-        k  = zeros(Float64, N)
-        k .= 2 * pi / (xmax - xmin) * vcat(0:N÷2-1,-N÷2:-1)
+        k  = zeros(Float64, nx)
+        k .= 2 * pi / (xmax - xmin) * vcat(0:nx÷2-1,-nx÷2:-1)
         T  = 2 * pi
 
-        x   = zeros(Float64, N)
-        x  .= range(xmin, stop=xmax, length=N+1)[1:end-1]
-        dx  = (xmax - xmin) / N
+        x   = zeros(Float64, nx)
+        x  .= range(xmin, stop=xmax, length=nx+1)[1:end-1]
+        dx  = (xmax - xmin) / nx
 
-        phi   = zeros(ComplexF64,N)
-        gamma = zeros(ComplexF64,N)
+        phi   = zeros(ComplexF64, nx)
+        gamma = zeros(ComplexF64, nx)
 
         if dataset == 1
 
@@ -65,13 +65,13 @@ struct DataSet
 
         end
 
-	u = zeros(ComplexF64, N)
-	v = zeros(ComplexF64, N)
+        u = zeros(ComplexF64, nx)
+        v = zeros(ComplexF64, nx)
 
         u .= phi .- 1im * ifft((1 .+ epsilon * k.^2) .^ (-1/2) .* fft(gamma))
         v .= conj.(phi) .- 1im * ifft((1 .+ epsilon * k.^2) .^ (-1/2) .* fft(conj.(gamma)))
 
-        new(N, epsilon, k, T, Tfinal, sigma, llambda, u, v, dx)
+        new(nx, epsilon, k, T, Tfinal, sigma, llambda, u, v, dx)
 
     end
 
