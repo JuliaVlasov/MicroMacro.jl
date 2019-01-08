@@ -223,16 +223,10 @@ function solve(m :: MicMac, dt, ntau)
     champu .= ifft(champu_fft ./ (1im * m.ktau), 1)
     champv .= ifft(champv_fft ./ (1im * m.ktau), 1)
 
-    println("0:", size(fft_u0), size(fft_v0))
-    println("bar:",size(fft_ubar), size(fft_vbar))
-    println("champ:",size(champu), size(champv))
-
     fft_ubar .= fft_u0 .- epsilon * transpose(champu[1, :])
     fft_vbar .= fft_v0 .- epsilon * transpose(champv[1, :])
 
     C1u, C1v = C1(m, 0.0, fft_ubar, fft_vbar)
-
-    println(size(C1u), size(C1v))
 
     fft_ug .= fft_u0 .- transpose(C1u[1, :])
     fft_vg .= fft_v0 .- transpose(C1v[1, :])
