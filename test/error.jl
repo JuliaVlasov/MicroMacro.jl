@@ -1,7 +1,7 @@
 using FFTW, LinearAlgebra
 
-function linear(U, temps, T, Ntau)
-    dtau   = T / Ntau
+function linear(U, temps, T, ntau)
+    dtau   = T / ntau
     Ubis   = vcat(U, transpose(U[1, :]))
     temps  = temps % T
     repere = temps / dtau + 1
@@ -10,32 +10,32 @@ function linear(U, temps, T, Ntau)
 end
 
 
-function trigo(U, temps, T, Ntau)
+function trigo(U, temps, T, ntau)
 
-    W  = zeros(ComplexF64, Ntau)
-    for i in 0:Ntau-1
+    W  = zeros(ComplexF64, ntau)
+    for i in 0:ntau-1
         W[i+1] = i
     end
-    for i in Ntau÷2:Ntau-1
-        W[i] = W[i] - Ntau
+    for i in ntau÷2:ntau-1
+        W[i] = W[i] - ntau
     end
     W = exp.(1im * 2 * pi / T * W * temps)
     V = fft(U, dims=1)
 
-    sum(V * transpose(W),dims=0) / Ntau
+    sum(V * transpose(W),dims=0) / ntau
 
 end
 
 
-function reconstr(U, temps, T, Ntau,type_reconst = 2)
+function reconstr(U, temps, T, ntau,type_reconst = 2)
 
     if type_reconst == 1
 
-        linear(U, temps, T, Ntau)
+        linear(U, temps, T, ntau)
 
     else
 
-        trigo(U, temps, T, Ntau)
+        trigo(U, temps, T, ntau)
 
     end
 
@@ -115,13 +115,14 @@ function erreur(u, v, epsilon, dataset)
         uv = reconstr_x(uv, x, xmin, xmax)
     end
 
-    uvu = uv[1, :] .+ 1im * uv[2, :]
-    uvv = uv[3, :] .+ 1im * uv[4, :]
+    uvu = vec(uv[1, :] .+ 1im * uv[2, :])
+    uvv = vec(uv[3, :] .+ 1im * uv[4, :])
 
-    @. refH1 = sqrt(dx * norm(ifft(1im * sqrt(1 + k^2) * fft(uvu)))^2 + dx * norm(
-        ifft(1im * sqrt(1 + k^2) * fft(uvv)))^2)
-    @. err = (sqrt(dx * norm(ifft(1im * sqrt(1 + k^2) * fft(u - uvu)))^2 + dx * norm(
-        ifft(1im * sqrt(1 + k^2) * fft(v - uvv)))^2)) / refH1
+    refH1 = sqrt(dx * norm(ifft(1im * sqrt.(1 .+ k.^2) .* fft(uvu)))^2 
+               + dx * norm(ifft(1im * sqrt.(1 .+ k.^2) .* fft(uvv)))^2)
+
+    err  = (sqrt(dx * norm(ifft(1im * sqrt.(1 .+ k.^2) .* fft(u .- uvu)))^2 
+               + dx * norm(ifft(1im * sqrt.(1 .+ k.^2) .* fft(v .- uvv)))^2)) / refH1
 
     err
 
