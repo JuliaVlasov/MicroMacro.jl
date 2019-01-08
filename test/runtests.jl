@@ -1,5 +1,5 @@
 using MicroMacro
-using Plots
+#using Plots
 
 #include("reconstr.jl")
 #include("test_reconstr.jl")
@@ -34,18 +34,19 @@ include("reconstr_x.jl")
 
 dataset = 3
 
-epsilons = [10.0^(-i) for i in 0:6]
+#epsilons = [10.0^(-i) for i in 0:6]
+epsilons = [1.0]
 
 xmin     = 0
 xmax     = 2π
 T        = 2π
-size_x   = [8]
-size_tau = [4]
+size_x   = [64]
+size_tau = [32]
 Tfinal   = 0.25
 
-p = plot(layout=(1,2))
+#p = plot(layout=(1,2))
 
-nb_dt  = 5 # different values of dt
+nb_dt  = 1 # 5 # different values of dt
 tabdt  = zeros(Float64, nb_dt)
 taberr = zeros(Float64, (length(epsilons), nb_dt))
 
@@ -62,7 +63,7 @@ etime = @elapsed for nx in size_x, ntau in size_tau
 
         for hh in 1:nb_dt
 
-            print("$hh, ")
+            println("dt = $(2.0^(-hh)) ")
 
             dtmicmac = 2.0^(-hh) * data.Tfinal / 16
 
@@ -78,19 +79,19 @@ etime = @elapsed for nx in size_x, ntau in size_tau
 
         println()
 
-        plot!(p[1,1], tabdt, taberr[kk, :], xaxis=:log,
-              yaxis=:log, label="ϵ=$epsilon")
+#        plot!(p[1,1], tabdt, taberr[kk, :], xaxis=:log,
+#              yaxis=:log, label="ϵ=$epsilon")
 
     end
 
 end
 
-xlabel!("dt")
-ylabel!("error")
-println("Elapsed time :", etime)
-
-for j in 1:size(taberr)[1]
-    plot!(p[1,2], tabepsilon, taberr[:, j], label="dt=$tabdt[j]")
-end
-
-xlabel!("epsilon")
+#xlabel!("dt")
+#ylabel!("error")
+#println("Elapsed time :", etime)
+#
+#for j in 1:size(taberr)[1]
+#    plot!(p[1,2], tabepsilon, taberr[:, j], label="dt=$tabdt[j]")
+#end
+#
+#xlabel!("epsilon")
