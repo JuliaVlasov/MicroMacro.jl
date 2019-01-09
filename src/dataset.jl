@@ -8,6 +8,7 @@ Class with initial data
 Relativistic Klein-Gordon equation
  
 """
+
 struct DataSet
 
     nx        :: Int64  
@@ -17,6 +18,7 @@ struct DataSet
     Tfinal    :: Float64
     sigma     :: Int64
     llambda   :: Int64
+    x         :: Array{Float64,1}
     u         :: Array{ComplexF64,1}
     v         :: Array{ComplexF64,1}
     dx        :: Float64
@@ -71,7 +73,7 @@ struct DataSet
         u .= phi .- 1im * ifft((1 .+ epsilon * k.^2) .^ (-1/2) .* fft(gamma))
         v .= conj.(phi) .- 1im * ifft((1 .+ epsilon * k.^2) .^ (-1/2) .* fft(conj.(gamma)))
 
-        new(nx, epsilon, k, T, Tfinal, sigma, llambda, u, v, dx)
+        new(nx, epsilon, k, T, Tfinal, sigma, llambda, x, u, v, dx)
 
     end
 
