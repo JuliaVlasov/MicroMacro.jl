@@ -5,3 +5,4 @@ deps/deps.jl
 Manifest.toml
 *.swp
 .idea/
+.ipynb_checkpoints/test-checkpoint.ipynb
