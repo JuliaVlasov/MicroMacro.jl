@@ -100,20 +100,25 @@ function duftau(m :: MicMac, t, fft_u, fft_v, fft_du, fft_dv)
     println("Call duftau")
 
     sigma    = 1
-    llambda  = m.llambda
+    llambda  = m.data.llambda
     matr     = m.matr
     conjmatr = conj.(matr)
+
+    println("matr:", size(matr))
+    println("m.A1:", size(m.A1))
+    println("fft_u:", size(fft_u))
+    println("fft_du:", size(fft_du))
 
     u = ifft(exp.(1im * t .* m.A1) .* fft_u .* matr)
     v = ifft(exp.(1im * t .* m.A1) .* fft_v .* matr)
 
-    du = ifft(exp(1im * t .* m.A1) .* fft_du .* matr)
-    dv = ifft(exp(1im * t .* m.A1) .* fft_dv .* matr)
+    du = ifft(exp.(1im * t .* m.A1) .* fft_du .* matr )
+    dv = ifft(exp.(1im * t .* m.A1) .* fft_dv .* matr )
 
     z  = (u  .+ conj.(v) ) / 2
     dz = (du .+ conj.(dv)) / 2
 
-    fz1 = 2 * abs.(z) .^ 2 * dz .+ z .^ 2 .* conj.(dz)
+    fz1 = 2 * abs.(z) .^ 2 .* dz .+ z .^ 2 .* conj.(dz)
 
     champu = -1im * llambda * m.A2 .* exp.(-1im * t .* m.A1) .* fft(conjmatr .* fz1)
     champv = -1im * llambda * m.A2 .* exp.(-1im * t .* m.A1) .* fft(conjmatr .* conj.(fz1))
@@ -129,31 +134,111 @@ function dtftau(m :: MicMac, t, fft_u, fft_v )
     println("Call dtftau")
 
     sigma    = 1
-    llambda  = m.llambda
+    llambda  = m.data.llambda
     matr     = m.matr
     conjmatr = conj.(matr)
 
     u  = ifft(exp.(1im * t .* m.A1) .* fft_u .* matr)
     v  = ifft(exp.(1im * t .* m.A1) .* fft_v .* matr)
 
-    du = ifft(exp.(1im * t .* m.A1) * (1im .* m.A1) .* fft_u) .* matr
-    dv = ifft(exp.(1im * t .* m.A1) * (1im .* m.A1) .* fft_v) .* matr
+    du = ifft(exp.(1im * t .* m.A1) .* (1im .* m.A1) .* fft_u) .* matr
+    dv = ifft(exp.(1im * t .* m.A1) .* (1im .* m.A1) .* fft_v) .* matr
 
-    z  = (u  + conj.(v) ) / 2
-    dz = (du + conj.(dv)) / 2
+    z  = (u  .+ conj.(v) ) / 2
+    dz = (du .+ conj.(dv)) / 2
 
-    fz1 = 2 * abs.(z) .^ 2 * dz + z .^ 2 * conj.(dz)
+    fz1 = 2 * abs.(z) .^ 2 .* dz .+ z .^ 2 .* conj.(dz)
     champu1 = -1im * llambda * m.A2 .* exp.(-1im * t .* m.A1) .* fft(conjmatr .* fz1)
     champv1 = -1im * llambda * m.A2 .* exp.(-1im * t .* m.A1) .* fft(conjmatr .* conj.(fz1))
 
     fz1 = abs.(z) .^ 2 .* z
-    champu2 = -1im * llambda * m.A2 .* exp.(-1im * t * m.A1) .* (-1im * m.A1) .* fft(conjmatr * fz1)
-    champv2 = -1im * llambda * m.A2 .* exp.(-1im * t * m.A1) .* (-1im * m.A1) .* fft(conjmatr * conj.(fz1))
+    champu2 = -1im * llambda * m.A2 .* exp.(-1im * t * m.A1) .* (-1im * m.A1) .* fft(conjmatr .* fz1)
+    champv2 = -1im * llambda * m.A2 .* exp.(-1im * t * m.A1) .* (-1im * m.A1) .* fft(conjmatr .* conj.(fz1))
 
     champu = champu1 .+ champu2
     champv = champv1 .+ champv2
 
     champu, champv
+
+end
+
+
+function champs_2(m :: MicMac, t, fft_ubar, fft_vbar, fft_ug, fft_vg)
+
+    sigma    = 1
+    llambda  = m.data.llambda
+    epsilon  = m.data.epsilon
+    matr     = m.matr
+    conjmatr = conj.(matr)
+
+    champu, champv = ftau(m, t, fft_ubar, fft_vbar)
+
+    champu_fft = fft(champu, 1)
+    champv_fft = fft(champv, 1)
+
+    champu_fft[1, :] .= 0.0
+    champv_fft[1, :] .= 0.0
+
+    dtauh1u = ifft(champu_fft, 1)
+    dtauh1v = ifft(champv_fft, 1)
+
+    h1u = epsilon * ifft(champu_fft ./ (1im * m.ktau), 1)
+    h1v = epsilon * ifft(champv_fft ./ (1im * m.ktau), 1)
+
+    C1u = fft_ubar .+ h1u
+    C1v = fft_vbar .+ h1v
+
+    ffu, ffv = ftau(m, t, C1u .+ fft_ug, C1v .+ fft_vg)
+
+    champu, champv = ftau(m, t, C1u, C1v)
+
+    champu_fft = fft(champu, 1)
+    champv_fft = fft(champv, 1)
+
+    champubaru = transpose(champu_fft[1, :] / m.ntau)
+    champubarv = transpose(champv_fft[1, :] / m.ntau)
+
+    champu1, champv1 = duftau(m, t, fft_ubar, fft_vbar, champubaru, champubarv)
+
+    champu2, champv2 = dtftau(m, t, fft_ubar, fft_vbar)
+
+    champu_fft = fft(champu1 .+ champu2, 1)
+    champv_fft = fft(champv1 .+ champv2, 1)
+
+    champu_fft[1, :] .= 0.0
+    champv_fft[1, :] .= 0.0
+
+    dtC1u = champubaru .+ epsilon * ifft(champu_fft ./ (1im * m.ktau), 1)
+    dtC1v = champubarv .+ epsilon * ifft(champv_fft ./ (1im * m.ktau), 1)
+
+    champgu = ffu .- dtauh1u .- dtC1u
+    champgv = ffv .- dtauh1v .- dtC1v
+
+    champgu_fft = fft(champgu, 1)
+    champgv_fft = fft(champgv, 1)
+
+    champmoyu = transpose(champgu_fft[1, :] / m.ntau)
+    champmoyv = transpose(champgv_fft[1, :] / m.ntau)
+
+    champgu_fft[1, :] .= 0.0 
+    champgv_fft[1, :] .= 0.0
+
+    ichampgu = ifft(champgu_fft ./ (1im * m.ktau), 1)
+    ichampgv = ifft(champgv_fft ./ (1im * m.ktau), 1)
+
+    champubaru, champubarv, ichampgu, ichampgv, champmoyu, champmoyv
+
+end
+
+
+function reconstr(u, t, T, ntau)
+
+    w   = zeros(ComplexF64, ntau)
+    w  .= vcat(0:ntau÷2-1,-ntau÷2:-1)
+    w  .= exp.(1im * 2π / T * w * t)
+    v   = fft(u, 1)
+
+    sum(v .* w, dims=1) / ntau
 
 end
 
@@ -184,8 +269,8 @@ function solve(m :: MicMac, dt, ntau)
     champu_fft = similar(champu)
     champv_fft = similar(champv)
 
-    fft_ubar12 = similar(fft_u)
-    fft_vbar12 = similar(fft_v)
+    fft_ubar12 = similar(fft_ubar)
+    fft_vbar12 = similar(fft_vbar)
 
     fft_ug = similar(fft_u)
     fft_vg = similar(fft_v)
@@ -231,102 +316,54 @@ function solve(m :: MicMac, dt, ntau)
     fft_ug .= fft_u0 .- transpose(C1u[1, :])
     fft_vg .= fft_v0 .- transpose(C1v[1, :])
 
-#    while t < Tfinal
-#
-#        iter += 1
-#        dt    = min(Tfinal-t, dt)
-#
-#        fft_ubar12 = fft_ubar .+ dt/2 * champubaru
-#        fft_vbar12 = fft_vbar .+ dt/2 * champubarv
-#
-#        fft_ug12  .= fft_ug 
-#	    fft_ug12 .+= epsilon * reconstr(ichampgu, (t+dt/2)/epsilon, T, ntau) 
-#	    fft_ug12 .-= epsilon * reconstr(ichampgu, t/epsilon, T, ntau) 
-#	    fft_ug12 .+= dt/2 * champmoyu
-#
-#        fft_vg12  .= fft_vg 
-#	    fft_vg12 .+= epsilon * reconstr(ichampgv, (t+dt/2)/epsilon, T, ntau) 
-#	    fft_vg12 .-= epsilon * reconstr(ichampgv, t/epsilon, T, ntau) 
-#	    fft_vg12 .+= dt/2 * champmoyv
-#
-#        champu, champv = ftau(m, t+dt/2, fft_ubar12, fft_vbar12 )
-#
-#        champu_fft = fft(champu, 1)
-#        champv_fft = fft(champv, 1)
-#
-#        champu_fft[1, :] .= 0.0
-#        champv_fft[1, :] .= 0.0
-#
-#        dtauh1u = ifft(champu_fft, 1)
-#        dtauh1v = ifft(champv_fft, 1)
-#
-#        h1u = epsilon * ifft(champu_fft ./ (1im * ktau), 1)
-#        h1v = epsilon * ifft(champv_fft ./ (1im * ktau), 1)
-#
-#        C1u = fft_ubar12 .+ h1u
-#        C1v = fft_vbar12 .+ h1v
-#
-#        ffu, ffv = ftau(m, t+dt/2, C1u .+ fft_ug12, C1v .+ fft_vg12,)
-#
-#        champu, champv = ftau(m, t, C1u, C1v)
-#
-#        champu_fft = fft(champu, 1)
-#        champv_fft = fft(champv, 1)
-#
-#        champubaru = champu_fft[1, :] / m.ntau
-#        champubarv = champv_fft[1, :] / m.ntau
-#
-#        champu1, champv1 = duftau(m, t+dt/2, fft_ubar12, fft_vbar12, 
-#                                  champubaru, champubarv)
-#
-#        champu2, champv2 = dtftau(m, t+dt/2, fft_ubar12, fft_vbar12 )
-#
-#        champu_fft = fft(champu1 .+ champu2, 1)
-#        champv_fft = fft(champv1 .+ champv2, 1)
-#
-#        champu_fft[1, :] .= 0.0
-#        champv_fft[1, :] .= 0.0
-#
-#        dtC1u = champubaru .+ epsilon * ifft(champu_fft / (1im * ktau), 1)
-#        dtC1v = champubarv .+ epsilon * ifft(champv_fft / (1im * ktau), 1)
-#
-#        champgu = ffu .- dtauh1u .- dtC1u
-#        champgv = ffv .- dtauh1v .- dtC1v
-#
-#        champgu_fft = fft(champgu, 1)
-#        champgv_fft = fft(champgv, 1)
-#
-#        champmoyu = champgu_fft[1, :] / m.ntau
-#        champmoyv = champgv_fft[1, :] / m.ntau
-#
-#        champgu_fft[1, :] .= 0.0 
-#        champgv_fft[1, :] .= 0.0
-#
-#        ichampgu = ifft(champgu_fft ./ (1im * ktau), 1)
-#        ichampgv = ifft(champgv_fft ./ (1im * ktau), 1)
-#
-#        fft_ubar .+= dt * champubaru
-#        fft_vbar .+= dt * champubarv
-#
-#        fft_ug .+= epsilon * reconstr(ichampgu, (t+dt)/epsilon, T, ntau) 
-#	    fft_ug .-= epsilon * reconstr(ichampgu, t/epsilon, T, ntau) 
-#	    fft_ug .+= dt * champmoyu
-#
-#        fft_vg .+= epsilon * reconstr(ichampgv, (t+dt)/epsilon, T, ntau) 
-#	    fft_vg .-= epsilon * reconstr(ichampgv, t/epsilon, T, ntau) 
-#	    fft_vg .+= dt * champmoyv
-#
-#        t += dt
-#
-#        C1u, C1v = C1(m, t, fft_ubar, fft_vbar)
-#
-#        uC1eval = reconstr(C1u, t / epsilon, T, ntau)
-#        vC1eval = reconstr(C1v, t / epsilon, T, ntau)
-#
-#        fft_u = uC1eval .+ fft_ug
-#        fft_v = vC1eval .+ fft_vg
-#
-#    end
+    while t < Tfinal
+
+        iter += 1
+        dt    = min(Tfinal-t, dt)
+
+        champubaru, champubarv, ichampgu, ichampgv, champmoyu, champmoyv = ( 
+            champs_2(m, t, fft_ubar, fft_vbar, fft_ug, fft_vg) )
+
+        fft_ubar12 .= fft_ubar .+ dt/2 * champubaru
+        fft_vbar12 .= fft_vbar .+ dt/2 * champubarv
+
+        println("ichampgu:",size(ichampgu))
+
+        fft_ug12  .= fft_ug 
+	    fft_ug12 .+= epsilon * reconstr(ichampgu, (t+dt/2)/epsilon, T, ntau) 
+        fft_ug12 .-= epsilon * reconstr(ichampgu, t/epsilon, T, ntau) 
+        fft_ug12 .+= dt/2 * champmoyu
+
+        fft_vg12  .= fft_vg 
+        fft_vg12 .+= epsilon * reconstr(ichampgv, (t+dt/2)/epsilon, T, ntau) 
+        fft_vg12 .-= epsilon * reconstr(ichampgv, t/epsilon, T, ntau) 
+        fft_vg12 .+= dt/2 * champmoyv
+
+        champubaru, champubarv, ichampgu, ichampgv, champmoyu, champmoyv = (
+            champs_2(m, t+dt/2, fft_ubar12, fft_vbar12, fft_ug12, fft_vg12))
+
+        fft_ubar .+= dt * champubaru
+        fft_vbar .+= dt * champubarv
+        
+        fft_ug .+= epsilon * reconstr(ichampgu, (t+dt)/epsilon, T, ntau) 
+        fft_ug .-= epsilon * reconstr(ichampgu, t/epsilon, T, ntau) 
+        fft_ug .+= dt * champmoyu
+        
+        fft_vg .+= epsilon * reconstr(ichampgv, (t+dt)/epsilon, T, ntau) 
+        fft_vg .-= epsilon * reconstr(ichampgv, t/epsilon, T, ntau) 
+        fft_vg .+= dt * champmoyv
+        
+        t += dt
+        
+        C1u, C1v = C1(m, t, fft_ubar, fft_vbar)
+        
+        uC1eval = reconstr(C1u, t / epsilon, T, ntau)
+        vC1eval = reconstr(C1v, t / epsilon, T, ntau)
+        
+        fft_u = uC1eval .+ fft_ug
+        fft_v = vC1eval .+ fft_vg
+
+    end
 
     fft_u .= exp.(1im * sqrt.(1 .+ epsilon * k.^2) * t / epsilon) .* fft_u
     fft_v .= exp.(1im * sqrt.(1 .+ epsilon * k.^2) * t / epsilon) .* fft_v
