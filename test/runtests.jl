@@ -1,5 +1,5 @@
 using MicroMacro
-#using Plots
+using Plots
 
 #include("reconstr.jl")
 #include("test_reconstr.jl")
@@ -61,6 +61,9 @@ etime = @elapsed for nx in size_x, ntau in size_tau
 
         data = DataSet(dataset, xmin, xmax, nx, epsilon, Tfinal)
 
+        plot(data.x,  real(data.u), label = :u0)
+        plot!(data.x, real(data.v), label = :v0)
+        
         for hh in 1:nb_dt
 
             println("dt = $(2.0^(-hh)) ")
@@ -71,9 +74,15 @@ etime = @elapsed for nx in size_x, ntau in size_tau
 
             u, v = solve(solver, dtmicmac, ntau)
 
+            plot!(data.x, real(data.u), label = :u1)
+            plot!(data.x, real(data.v), label = :v1)
+            savefig("uv.png")
+
             tabdt[hh] = dtmicmac
 
-            taberr[kk,hh] = erreur(u,v,epsilon,dataset)
+            err = erreur(u,v,epsilon,dataset)
+            println(" error = $err ")
+            taberr[kk,hh] = err
 
         end
 
