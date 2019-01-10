@@ -6,3 +6,5 @@ Manifest.toml
 *.swp
 .idea/
 .ipynb_checkpoints/test-checkpoint.ipynb
+.ipynb_checkpoints/test_julia-checkpoint.ipynb
+.ipynb_checkpoints/Untitled-checkpoint.ipynb
