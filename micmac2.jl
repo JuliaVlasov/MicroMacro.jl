@@ -14,20 +14,20 @@ end
 
 function ftau(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64})
 
-    u = transpose(ifft(exp.(1im * t * m.A1) .* fft_u, 1)) .* m.matr
-    v = transpose(ifft(exp.(1im * t * m.A1) .* fft_v, 1)) .* m.matr
+    m.ut .= transpose(ifft(exp.(1im * t * m.A1) .* fft_u, 1)) .* m.matr
+    m.vt .= transpose(ifft(exp.(1im * t * m.A1) .* fft_v, 1)) .* m.matr
 
-    z = (u .+ conj.(v)) / 2
+    z = (m.ut .+ conj.(m.vt)) / 2
 
     fz1 = abs.(z) .^ (2 * m.sigma) .* z
 
     u = -1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1) 
     v = -1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1) 
 
-    u = transpose(u) .* fft(m.conjmatr .* fz1,2)
-    v = transpose(v) .* fft(m.conjmatr .* conj.(fz1),2)
+    m.ut .= transpose(u) .* fft(m.conjmatr .* fz1,2)
+    m.vt .= transpose(v) .* fft(m.conjmatr .* conj.(fz1),2)
 
-    u, v
+    m.ut, m.vt
 end
 
 function ftau(m, t, fft_u :: Array{ComplexF64,2}, fft_v :: Array{ComplexF64,2})
@@ -280,7 +280,7 @@ struct DataSet
 
 end
 
-struct MicMac
+mutable struct MicMac
 
     data      :: DataSet
     ntau      :: Int64
@@ -292,6 +292,8 @@ struct MicMac
     sigma     :: Int64
     llambda   :: Int64
     epsilon   :: Float64
+    ut        :: Array{ComplexF64,2}
+    vt        :: Array{ComplexF64,2}
 
     function MicMac( data, ntau )
 
@@ -326,8 +328,11 @@ struct MicMac
             A2 .= 1.0
         end
 
+        ut = zeros(ComplexF64,(ntau,nx))
+        vt = zeros(ComplexF64,(ntau,nx))
+
         new( data, ntau, ktau, matr, conjmatr, A1 , A2, 
-             sigma, llambda, epsilon)
+             sigma, llambda, epsilon, ut, vt)
 
     end
 
@@ -355,20 +360,26 @@ function run(self, dt)
     conjmatr = self.conjmatr
     ntau     = self.ntau
 
-    t = 0
+    t = 0.0
     iter = 0
 
+    fft_u = copy(u)
+    fft_v = copy(v)
+
+    fft_u .= fft(u,1)
+    fft_v .= fft(v,1)
+ 
     fft_ubar = similar(u)
     fft_vbar = similar(v)
 
     fft_ug = similar(u)
     fft_vg = similar(v)
 
-    fft_ubar .= fft(u,1)
-    fft_vbar .= fft(v,1)
+    fft_ubar .= fft_u
+    fft_vbar .= fft_v
 
-    fft_ug .= fft(u,1)
-    fft_vg .= fft(v,1)
+    fft_ug .= fft_u
+    fft_vg .= fft_v
 
     init_2!(self, 0.0, fft_ubar, fft_vbar, fft_ug, fft_vg )
 
@@ -382,17 +393,30 @@ function run(self, dt)
         fft_ubar12 = fft_ubar .+ dt / 2 * champubaru
         fft_vbar12 = fft_vbar .+ dt / 2 * champubarv
 
-        fft_ug12 = fft_ug .+ epsilon * reconstr(ichampgu, (t + dt / 2) / epsilon, T, self.ntau) .- epsilon * reconstr(ichampgu, t / epsilon, T, self.ntau) .+ dt / 2 * champmoyu
-        fft_vg12 = fft_vg .+ epsilon * reconstr(ichampgv, (t + dt / 2) / epsilon, T, self.ntau) .- epsilon * reconstr(ichampgv, t / epsilon, T, self.ntau) .+ dt / 2 * champmoyv
+        fft_ug12   = fft_ug .+ (
+             epsilon * reconstr(ichampgu, (t + dt / 2) / epsilon, T, self.ntau)
+          .- epsilon * reconstr(ichampgu, t / epsilon, T, self.ntau) 
+          .+ dt / 2 * champmoyu )
+
+        fft_vg12   = fft_vg .+ (
+             epsilon * reconstr(ichampgv, (t + dt / 2) / epsilon, T, self.ntau) 
+          .- epsilon * reconstr(ichampgv, t / epsilon, T, self.ntau) 
+          .+ dt / 2 * champmoyv )
 
         champubaru, champubarv, ichampgu, ichampgv, champmoyu, champmoyv = champs_2(self, t + dt / 2, fft_ubar12, fft_vbar12, fft_ug12, fft_vg12)
 
-        fft_ubar = fft_ubar .+ dt * champubaru
-        fft_vbar = fft_vbar .+ dt * champubarv
+        fft_ubar .+= dt * champubaru
+        fft_vbar .+= dt * champubarv
 
-        fft_ug = fft_ug .+ epsilon * reconstr(ichampgu, (t + dt) / epsilon, T, self.ntau) .- epsilon * reconstr(ichampgu, t / epsilon, T, self.ntau) .+ dt * champmoyu
+        fft_ug = fft_ug .+ (
+            epsilon * reconstr(ichampgu, (t + dt) / epsilon, T, self.ntau) 
+         .- epsilon * reconstr(ichampgu, t / epsilon, T, self.ntau) 
+         .+ dt * champmoyu )
 
-        fft_vg = fft_vg .+ epsilon * reconstr(ichampgv, (t + dt) / epsilon, T, self.ntau) .- epsilon * reconstr(ichampgv, t / epsilon, T, self.ntau) .+ dt * champmoyv
+        fft_vg = fft_vg .+ (
+            epsilon * reconstr(ichampgv, (t + dt) / epsilon, T, self.ntau) 
+         .- epsilon * reconstr(ichampgv, t / epsilon, T, self.ntau) 
+         .+ dt * champmoyv )
 
         t = t + dt
 
@@ -401,18 +425,18 @@ function run(self, dt)
         uC1eval = reconstr(C1u, t / epsilon, T, self.ntau)
         vC1eval = reconstr(C1v, t / epsilon, T, self.ntau)
 
-        fft_u = uC1eval .+ fft_ug
-        fft_v = vC1eval .+ fft_vg
+        fft_u .= uC1eval .+ fft_ug
+        fft_v .= vC1eval .+ fft_vg
 
     end
 
-    fft_u = exp.(1im * sqrt.(1 .+ epsilon * kx .^ 2) * t / epsilon) .* fft_u
-    fft_v = exp.(1im * sqrt.(1 .+ epsilon * kx .^ 2) * t / epsilon) .* fft_v
+    fft_u .= exp.(1im * sqrt.(1 .+ epsilon * kx .^ 2) * t / epsilon) .* fft_u
+    fft_v .= exp.(1im * sqrt.(1 .+ epsilon * kx .^ 2) * t / epsilon) .* fft_v
 
-    u = ifft(fft_u,1)
-    v = ifft(fft_v,1)
+    ifft!(fft_u,1)
+    ifft!(fft_v,1)
 
-    return u, v
+    return fft_u, fft_v
 
 end
 
