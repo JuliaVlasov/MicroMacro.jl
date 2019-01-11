@@ -42,19 +42,21 @@ end
 
 function ftau(m, t, fft_u :: Array{ComplexF64,2}, fft_v :: Array{ComplexF64,2})
 
-    m.ut .= transpose(exp.(1im * t * m.A1)) .* fft_u
-    m.vt .= transpose(exp.(1im * t * m.A1)) .* fft_v
+    m.v .= exp.(1im * t * m.A1)
 
-    ifft!(m.ut,2)
-    ifft!(m.vt,2)
+    ut = transpose(m.v) .* fft_u
+    vt = transpose(m.v) .* fft_v
 
-    ut = m.ut .* m.matr
-    vt = m.vt .* m.matr
+    ifft!(ut,2)
+    ifft!(vt,2)
+
+    ut .*= m.matr
+    vt .*= m.matr
 
     ut .= (ut .+ conj.(vt)) / 2
     vt .= abs.(ut) .^ (2 * m.sigma) .* ut
 
-    u = -1im * m.llambda .* m.A2 .* exp.(-1im * t * m.A1) 
+    m.u = -1im * m.llambda .* m.A2 .* conj.(m.v) 
 
     ut .= m.conjmatr .* vt
     vt .= m.conjmatr .* conj.(vt)
@@ -62,8 +64,8 @@ function ftau(m, t, fft_u :: Array{ComplexF64,2}, fft_v :: Array{ComplexF64,2})
     fft!(ut,2)
     fft!(vt,2)
 
-    ut .*= transpose(u)
-    vt .*= transpose(u) 
+    ut .*= transpose(m.u)
+    vt .*= transpose(m.u) 
 
     ut, vt
 
