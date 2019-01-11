@@ -394,11 +394,12 @@ def erreur(u, v, epsilon):
     uvu = uv[0, :] + 1j * uv[1, :]
     uvv = uv[2, :] + 1j * uv[3, :]
 
-    refH1 = sqrt(dx * norm(ifft(1j * sqrt(1 + k ** 2) * fft(uvu))) ** 2 + dx * norm(
-        ifft(1j * sqrt(1 + k ** 2) * fft(uvv))) ** 2)
+    refH1 = sqrt(dx * norm(ifft(1j * sqrt(1 + k ** 2) * fft(uvu))) ** 2 
+               + dx * norm(ifft(1j * sqrt(1 + k ** 2) * fft(uvv))) ** 2)
+    print(refH1)
     
-    err = (sqrt(dx * norm(ifft(1j * sqrt(1 + k ** 2) * fft(u - uvu))) ** 2 + dx * norm(
-        ifft(1j * sqrt(1 + k ** 2) * fft(v - uvv))) ** 2)) / refH1
+    err = (sqrt(dx * norm(ifft(1j * sqrt(1 + k ** 2) * fft(u - uvu))) ** 2 
+              + dx * norm(ifft(1j * sqrt(1 + k ** 2) * fft(v - uvv))) ** 2)) / refH1
 
     return err
 

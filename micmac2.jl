@@ -3,7 +3,8 @@ using FFTW, LinearAlgebra
 function reconstr(u, t, T, ntau)
 
     w   = zeros(ComplexF64, ntau)
-    w  .= vcat(0:ntau÷2-1,-ntau÷2:-1)
+    w  .= collect(0:ntau-1)
+    w[ntau÷2:end] .-= ntau
     w  .= exp.(1im * 2π / T * w * t)
     v   = fft(u,1)
 
@@ -13,8 +14,8 @@ end
 
 function ftau(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64})
 
-    u = transpose(ifft(exp.(1im * t * m.A1) .* fft_u)) .* m.matr
-    v = transpose(ifft(exp.(1im * t * m.A1) .* fft_v)) .* m.matr
+    u = transpose(ifft(exp.(1im * t * m.A1) .* fft_u, 1)) .* m.matr
+    v = transpose(ifft(exp.(1im * t * m.A1) .* fft_v, 1)) .* m.matr
 
     z = (u .+ conj.(v)) / 2
 
@@ -23,10 +24,10 @@ function ftau(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64})
     u = -1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1) 
     v = -1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1) 
 
-    u = transpose(u) .* fft(m.conjmatr .* fz1)
-    v = transpose(v) .* fft(m.conjmatr .* conj.(fz1))
+    u = transpose(u) .* fft(m.conjmatr .* fz1,2)
+    v = transpose(v) .* fft(m.conjmatr .* conj.(fz1),2)
 
-    return u, v
+    u, v
 end
 
 function ftau(m, t, fft_u :: Array{ComplexF64,2}, fft_v :: Array{ComplexF64,2})
@@ -41,15 +42,17 @@ function ftau(m, t, fft_u :: Array{ComplexF64,2}, fft_v :: Array{ComplexF64,2})
     u = -1im * m.llambda .* m.A2 .* exp.(-1im * t * m.A1) 
     v = -1im * m.llambda .* m.A2 .* exp.(-1im * t * m.A1) 
 
-    u = transpose(u) .* fft(m.conjmatr .* fz1)
-    v = transpose(v) .* fft(m.conjmatr .* conj.(fz1))
+    u = transpose(u) .* fft(m.conjmatr .* fz1       ,2)
+    v = transpose(v) .* fft(m.conjmatr .* conj.(fz1),2)
 
-    return u, v
+    u, v
 
 end
 
 
-function duftau(m, t, fft_u, fft_v, fft_du, fft_dv )
+function duftau(m, t, 
+    fft_u  :: Vector{ComplexF64}, fft_v  :: Vector{ComplexF64}, 
+    fft_du :: Vector{ComplexF64}, fft_dv :: Vector{ComplexF64} )
 
     sigma = 1
 
@@ -67,18 +70,20 @@ function duftau(m, t, fft_u, fft_v, fft_du, fft_dv )
     u = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1)) .* fft(m.conjmatr .* fz1,2)
     v = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1)) .* fft(m.conjmatr .* conj(fz1),2)
 
-    return u, v
+    u, v
+
 end
 
 
-function dtftau(m, t, fft_u, fft_v)
+function dtftau(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64})
 
     sigma = 1
 
     u  = ifft(transpose(exp.(1im * t * m.A1) .* fft_u) .* m.matr, 2)
     v  = ifft(transpose(exp.(1im * t * m.A1) .* fft_v) .* m.matr, 2)
-    du = transpose(ifft(exp.(1im * t * m.A1) .* (1im * m.A1) .* fft_u)) .* m.matr
-    dv = transpose(ifft(exp.(1im * t * m.A1) .* (1im * m.A1) .* fft_v)) .* m.matr
+
+    du = transpose(ifft(exp.(1im * t * m.A1) .* (1im * m.A1) .* fft_u,1)) .* m.matr
+    dv = transpose(ifft(exp.(1im * t * m.A1) .* (1im * m.A1) .* fft_v,1)) .* m.matr
 
     z  = ( u .+ conj.(v)) / 2
     dz = (du .+ conj.(dv)) / 2
@@ -89,40 +94,51 @@ function dtftau(m, t, fft_u, fft_v)
     v1 = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1)) .* fft(m.conjmatr .* conj.(fz1), 2)
 
     fz1 = abs.(z).^2 .* z
-    u2 = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1) .* (-1im * m.A1)) .* fft(m.conjmatr .* fz1)
-    v2 = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1) .* (-1im * m.A1)) .* fft(m.conjmatr .* conj.(fz1))
+    u2 = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1) .* (-1im * m.A1)) .* fft(m.conjmatr .* fz1, 2)
+    v2 = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1) .* (-1im * m.A1)) .* fft(m.conjmatr .* conj.(fz1), 2)
 
     u = u1 .+ u2
     v = v1 .+ v2
 
-    return u, v
+    u, v
+
 end
 
-function init_2(m, t, fft_u0, fft_v0)
+function init_2!(m, t, 
+                 fft_ubar :: Vector{ComplexF64}, 
+                 fft_vbar :: Vector{ComplexF64},
+                 fft_ug   :: Vector{ComplexF64}, 
+                 fft_vg   :: Vector{ComplexF64})
 
-    champu, champv = ftau(m, t, fft_u0, fft_v0)
+    champu, champv = ftau(m, t, fft_ubar, fft_vbar)
 
-    champu_fft = fft(champu, 1)
-    champv_fft = fft(champv, 1)
+    fft!(champu, 1)
+    fft!(champv, 1)
 
-    champu_fft[1, :] .= 0 
-    champv_fft[1, :] .= 0 
+    champu[1, :] .= 0 
+    champv[1, :] .= 0 
 
-    champu = ifft(champu_fft ./ (1im * m.ktau), 1)
-    champv = ifft(champv_fft ./ (1im * m.ktau), 1)
+    champu ./= (1im * m.ktau)
+    champv ./= (1im * m.ktau)
 
-    fft_ubar = fft_u0 .- m.epsilon * champu[1, :]
-    fft_vbar = fft_v0 .- m.epsilon * champv[1, :]
+    ifft!(champu, 1)
+    ifft!(champv, 1)
 
-    C1u, C1v = C1(m, t, fft_ubar, fft_vbar)
+    fft_ubar .-= m.epsilon * champu[1, :]
+    fft_vbar .-= m.epsilon * champv[1, :]
 
-    fft_ug = fft_u0 .- C1u[1, :]
-    fft_vg = fft_v0 .- C1v[1, :]
+    champu, champv = C1(m, t, fft_ubar, fft_vbar)
 
-    return fft_ubar, fft_vbar, fft_ug, fft_vg
+    fft_ug .-= champu[1, :]
+    fft_vg .-= champv[1, :]
+
 end
 
-function champs_2(m, t, fft_ubar, fft_vbar, fft_ug, fft_vg)
+function champs_2(m, t, 
+    fft_ubar :: Vector{ComplexF64}, 
+    fft_vbar :: Vector{ComplexF64}, 
+    fft_ug   :: Vector{ComplexF64}, 
+    fft_vg   :: Vector{ComplexF64})
 
     champu, champv = ftau(m, t, fft_ubar, fft_vbar)
 
@@ -191,12 +207,12 @@ function champs_2(m, t, fft_ubar, fft_vbar, fft_ug, fft_vg)
     champu = ifft(champu, 1)
     champv = ifft(champv, 1)
 
-    return champubar, champvbar, champu, champv, champmoyu, champmoyv
+    champubar, champvbar, champu, champv, champmoyu, champmoyv
 
 end
 
 
-function C1(m, t, fft_u, fft_v )
+function C1(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64} )
 
     champu, champv = ftau(m, t, fft_u, fft_v)
 
@@ -234,11 +250,10 @@ struct DataSet
     v         :: Array{ComplexF64,1}
     dx        :: Float64
     
-    function DataSet( xmin, xmax, nx, epsilon, Tfinal)
+    function DataSet( xmin, xmax, nx, epsilon, T, Tfinal)
 
         kx  = zeros(Float64, nx)
         kx .= 2 * pi / (xmax - xmin) * vcat(0:nx÷2-1,-nx÷2:-1)
-        T   = 2 * pi
 
         x   = zeros(Float64, nx)
         x  .= range(xmin, stop=xmax, length=nx+1)[1:end-1]
@@ -247,8 +262,8 @@ struct DataSet
         ϕ  = zeros(ComplexF64, nx)
         γ  = zeros(ComplexF64, nx)
 
-        ϕ  .= (1 + 1im) * cos.(x)
-        γ  .= (1 - 1im) * sin.(x)
+        ϕ  .= (1 + 1im) .* cos.(x)
+        γ  .= (1 - 1im) .* sin.(x)
 
         sigma   = 1
         llambda = -1
@@ -256,8 +271,8 @@ struct DataSet
         u = zeros(ComplexF64, nx)
         v = zeros(ComplexF64, nx)
 
-        u .= ϕ .- 1im * ifft((1 .+ epsilon * kx.^2) .^ (-1/2) .* fft(γ))
-        v .= conj.(ϕ) .- 1im * ifft((1 .+ epsilon * kx.^2) .^ (-1/2) .* fft(conj.(γ)))
+        u .= ϕ .- 1im * ifft((1 .+ epsilon * kx.^2) .^ (-1/2) .* fft(γ,1), 1)
+        v .= conj.(ϕ) .- 1im * ifft((1 .+ epsilon * kx.^2) .^ (-1/2) .* fft(conj.(γ),1),1)
 
         new(nx, xmin, xmax, epsilon, kx, T, Tfinal, sigma, llambda, x, u, v, dx)
 
@@ -342,11 +357,20 @@ function run(self, dt)
 
     t = 0
     iter = 0
-    fft_u0 = fft(u)
-    fft_v0 = fft(v)
-    fft_ubar, fft_vbar, fft_ug, fft_vg = init_2(self, 0, fft_u0, fft_v0)
 
-    println(size(fft_ug), size(fft_vg))
+    fft_ubar = similar(u)
+    fft_vbar = similar(v)
+
+    fft_ug = similar(u)
+    fft_vg = similar(v)
+
+    fft_ubar .= fft(u,1)
+    fft_vbar .= fft(v,1)
+
+    fft_ug .= fft(u,1)
+    fft_vg .= fft(v,1)
+
+    init_2!(self, 0.0, fft_ubar, fft_vbar, fft_ug, fft_vg )
 
     while t < Tfinal
 
@@ -385,35 +409,15 @@ function run(self, dt)
     fft_u = exp.(1im * sqrt.(1 .+ epsilon * kx .^ 2) * t / epsilon) .* fft_u
     fft_v = exp.(1im * sqrt.(1 .+ epsilon * kx .^ 2) * t / epsilon) .* fft_v
 
-    u = ifft(fft_u)
-    v = ifft(fft_v)
+    u = ifft(fft_u,1)
+    v = ifft(fft_v,1)
 
     return u, v
 
 end
 
 
-function reconstr_x(uv, x, xmin, xmax)
 
-    N  = size(uv)[2]
-    nx = size(x)[1]
-    L  = xmax - xmin
-    UA = zeros(ComplexF64, (4, nx))
-    v  = fft(uv, 2) / N
-
-    for jj in 1:N÷2
-        vv = v[:, jj]
-        UA .= UA .+ vv .* exp.(1im * 2 * pi / L * (jj-1) * (x' .- xmin))
-    end
-    
-    for jj in N÷2:N
-        vv = v[:, jj]
-        UA = UA .+ vv .* exp.(1im * 2 * pi / L * (jj-1-N) * (x' .- xmin))
-    end
-
-    UA
-
-end
 
 function compute_error(u, v, data::DataSet)
 
@@ -448,9 +452,8 @@ function compute_error(u, v, data::DataSet)
 
     ref_file = joinpath("test", "donnees_data3_128_micmac/", str3 * str4 * str5)
     
-    println(ref_file)
-
-    uv = zeros(Float64, (4, 128))
+    ndata = 128
+    uv    = zeros(Float64, (4, ndata))
 
     open(ref_file) do f
 
@@ -463,40 +466,53 @@ function compute_error(u, v, data::DataSet)
     end
 
     nx   = data.nx
-    x    = data.x
     xmin = data.xmin
     xmax = data.xmax
-    dx   = data.dx
-    kx   = data.kx
+    T    = data.T
+    x    = data.x
+    dx   = (xmax - xmin) / nx
+    L    = xmax - xmin
+    kx   = zeros(Float64, nx)
+    kx   = 2π / (xmax - xmin) * vcat(0:nx÷2-1,-nx÷2:-1)
 
-    uv = reconstr_x(uv, x, xmin, xmax)
+    ua = zeros(ComplexF64, (4, nx))
+    va = fft(uv, 2) / ndata
+    k  = zeros(Float64, ndata)
+    k .= 2π / L * vcat(0:ndata÷2-1,-ndata÷2:-1)
 
-    uref = uv[1, :] .+ 1im * uv[2, :]
-    vref = uv[3, :] .+ 1im * uv[4, :]
+    for j in 1:ndata
+        vv  = va[:, j]
+	    ua .= ua .+ vv .* exp.(1im * k[j] * (x'.- xmin))
+    end
 
-    refH1 = sqrt(dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(uref)))^2 
-               + dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(vref)))^2)
+    uref = ua[1, :] .+ 1im * ua[2, :]
+    vref = ua[3, :] .+ 1im * ua[4, :]
+
+    refH1 = sqrt(dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(uref,1),1))^2 
+               + dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(vref,1),1))^2)
+
+    err  = (sqrt(dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(u .- uref,1),1))^2 
+               + dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(v .- vref,1),1))^2)) / refH1
     
-    err  = (sqrt(dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(u .- uref)))^2 
-               + dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(v .- uref)))^2)) / refH1
-    
-    err
+    println(err)
+
+    uref, vref
 
 end
 
 xmin    = 0
 xmax    = 2 * pi
 T       = 2 * pi
-N       = 64
-ntau    = 32
+N       = 256
+ntau    = 128
 Tfinal  = 0.25
 epsilon = 0.1
 
-data = DataSet(xmin, xmax, N, epsilon, Tfinal)
+data = DataSet(xmin, xmax, N, epsilon, T, Tfinal)
 
-dt = 2 ^ (-4) * Tfinal / 16
+dt = 2 ^ (-3) * Tfinal / 16
 
 m = MicMac(data, ntau)
-u, v = run(m, dt)
+@time u, v = run(m, dt)
 
-println(compute_error(u, v, data))
+uref, vref = compute_error(u, v, data)
