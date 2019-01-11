@@ -120,42 +120,42 @@ function dtftau(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64})
     m.u .= exp.(1im * t * m.A1) 
     m.v .= -1im * m.llambda * m.A2 .* conj.(m.u)
 
-    ut = transpose(m.u .* fft_u) .* m.matr
-    vt = transpose(m.u .* fft_v) .* m.matr
+    ut = (m.u .* fft_u) .* m.conjmatr'
+    vt = (m.u .* fft_v) .* m.conjmatr'
 
-    ifft!(ut, 2)
-    ifft!(vt, 2)
+    ifft!(ut, 1)
+    ifft!(vt, 1)
 
     z  = ( ut .+ conj.(vt)) / 2
 
-    du = transpose(ifft(m.u .* (1im * m.A1) .* fft_u,1)) .* m.matr
-    dv = transpose(ifft(m.u .* (1im * m.A1) .* fft_v,1)) .* m.matr
+    du = ifft(m.u .* (1im * m.A1) .* fft_u,1) .* m.conjmatr'
+    dv = ifft(m.u .* (1im * m.A1) .* fft_v,1) .* m.conjmatr'
 
     dz = (du .+ conj.(dv)) / 2
 
     fz1 = 2 * abs.(z).^2 .* dz .+ z.^2 .* conj.(dz)
 
-    u1 = m.conjmatr .* fz1
-    v1 = m.conjmatr .* conj.(fz1)
+    u1 = m.matr' .* fz1
+    v1 = m.matr' .* conj.(fz1)
 
-    fft!(u1, 2)
-    fft!(v1, 2)
+    fft!(u1, 1)
+    fft!(v1, 1)
 
-    u1 .*= transpose(m.v)
-    v1 .*= transpose(m.v) 
+    u1 .*= m.v
+    v1 .*= m.v 
 
     fz1 = abs.(z).^2 .* z
 
-    u2 = m.conjmatr .* fz1
-    v2 = m.conjmatr .* conj.(fz1)
+    u2 = m.matr' .* fz1
+    v2 = m.matr' .* conj.(fz1)
 
-    fft!(u2, 2)
-    fft!(v2, 2)
+    fft!(u2, 1)
+    fft!(v2, 1)
 
-    u2 .*= transpose(m.v .* (-1im * m.A1))
-    v2 .*= transpose(m.v .* (-1im * m.A1)) 
+    u2 .*= (m.v .* (-1im * m.A1))
+    v2 .*= (m.v .* (-1im * m.A1)) 
 
-    u1 .+ u2, v1 .+ v2
+    transpose(u1 .+ u2), transpose(v1 .+ v2)
 
 
 end
