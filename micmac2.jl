@@ -78,21 +78,37 @@ function duftau(m, t,
 
     sigma = 1
 
-    u = ifft(transpose(exp.(1im * t * m.A1) .* fft_u) .* m.matr, 2)
-    v = ifft(transpose(exp.(1im * t * m.A1) .* fft_v) .* m.matr, 2)
+    m.u .= exp.(1im * t * m.A1) 
+    m.v .= -1im * m.llambda * m.A2 .* conj.(m.u)
 
-    du = ifft(transpose(exp.(1im * t * m.A1) .* fft_du) .* m.matr, 2)
-    dv = ifft(transpose(exp.(1im * t * m.A1) .* fft_dv) .* m.matr, 2)
+    m.ut .= transpose(m.u .* fft_u) .* m.matr
+    ifft!(m.ut,2)
 
-    z  = (u  .+ conj.(v)) / 2
-    dz = (du .+ conj.(dv)) / 2
+    m.vt .= transpose(m.u .* fft_v) .* m.matr
+    ifft!(m.vt, 2)
+
+    z  = (m.ut  .+ conj.(m.vt)) / 2
+
+    m.ut .= transpose(m.u .* fft_du) .* m.matr
+    ifft!(m.ut, 2)
+
+    m.vt .= transpose(m.u .* fft_dv) .* m.matr
+    ifft!(m.vt, 2)
+
+    dz = (m.ut .+ conj.(m.vt)) / 2
 
     fz1 = 2 * abs.(z).^2 .* dz .+ z.^2 .* conj.(dz)
 
-    u = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1)) .* fft(m.conjmatr .* fz1,2)
-    v = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1)) .* fft(m.conjmatr .* conj(fz1),2)
+    m.ut .= m.conjmatr .* fz1
+    m.vt .= m.conjmatr .* conj.(fz1)
 
-    u, v
+    fft!(m.ut,2)
+    fft!(m.vt,2)
+    
+    m.ut .*= transpose(m.v) 
+    m.vt .*= transpose(m.v)
+
+    m.ut, m.vt
 
 end
 
@@ -101,28 +117,46 @@ function dtftau(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64})
 
     sigma = 1
 
-    u  = ifft(transpose(exp.(1im * t * m.A1) .* fft_u) .* m.matr, 2)
-    v  = ifft(transpose(exp.(1im * t * m.A1) .* fft_v) .* m.matr, 2)
+    m.u .= exp.(1im * t * m.A1) 
+    m.v .= -1im * m.llambda * m.A2 .* conj.(m.u)
 
-    du = transpose(ifft(exp.(1im * t * m.A1) .* (1im * m.A1) .* fft_u,1)) .* m.matr
-    dv = transpose(ifft(exp.(1im * t * m.A1) .* (1im * m.A1) .* fft_v,1)) .* m.matr
+    ut = transpose(m.u .* fft_u) .* m.matr
+    vt = transpose(m.u .* fft_v) .* m.matr
 
-    z  = ( u .+ conj.(v)) / 2
+    ifft!(ut, 2)
+    ifft!(vt, 2)
+
+    z  = ( ut .+ conj.(vt)) / 2
+
+    du = transpose(ifft(m.u .* (1im * m.A1) .* fft_u,1)) .* m.matr
+    dv = transpose(ifft(m.u .* (1im * m.A1) .* fft_v,1)) .* m.matr
+
     dz = (du .+ conj.(dv)) / 2
 
     fz1 = 2 * abs.(z).^2 .* dz .+ z.^2 .* conj.(dz)
 
-    u1 = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1)) .* fft(m.conjmatr .* fz1, 2)
-    v1 = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1)) .* fft(m.conjmatr .* conj.(fz1), 2)
+    u1 = m.conjmatr .* fz1
+    v1 = m.conjmatr .* conj.(fz1)
+
+    fft!(u1, 2)
+    fft!(v1, 2)
+
+    u1 .*= transpose(m.v)
+    v1 .*= transpose(m.v) 
 
     fz1 = abs.(z).^2 .* z
-    u2 = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1) .* (-1im * m.A1)) .* fft(m.conjmatr .* fz1, 2)
-    v2 = transpose(-1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1) .* (-1im * m.A1)) .* fft(m.conjmatr .* conj.(fz1), 2)
 
-    u = u1 .+ u2
-    v = v1 .+ v2
+    u2 = m.conjmatr .* fz1
+    v2 = m.conjmatr .* conj.(fz1)
 
-    u, v
+    fft!(u2, 2)
+    fft!(v2, 2)
+
+    u2 .*= transpose(m.v .* (-1im * m.A1))
+    v2 .*= transpose(m.v .* (-1im * m.A1)) 
+
+    u1 .+ u2, v1 .+ v2
+
 
 end
 
