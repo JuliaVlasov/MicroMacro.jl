@@ -40,34 +40,33 @@ function ftau(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64})
     m.ut, m.vt
 end
 
-function ftau(m, t, fft_u :: Array{ComplexF64,2}, fft_v :: Array{ComplexF64,2})
+function ftau!(m, t, fft_u :: Array{ComplexF64,2}, 
+                     fft_v :: Array{ComplexF64,2})
 
     m.v .= exp.(1im * t * m.A1)
 
-    ut = transpose(m.v) .* fft_u
-    vt = transpose(m.v) .* fft_v
+    fft_u .*= transpose(m.v) 
+    fft_v .*= transpose(m.v) 
 
-    ifft!(ut,2)
-    ifft!(vt,2)
+    ifft!(fft_u,2)
+    ifft!(fft_v,2)
 
-    ut .*= m.matr
-    vt .*= m.matr
+    fft_u .*= m.matr
+    fft_v .*= m.matr
 
-    ut .= (ut .+ conj.(vt)) / 2
-    vt .= abs.(ut) .^ (2 * m.sigma) .* ut
+    fft_u .= (fft_u .+ conj.(fft_v)) / 2
+    fft_v .= abs.(fft_u) .^ (2 * m.sigma) .* fft_u
 
     m.u = -1im * m.llambda .* m.A2 .* conj.(m.v) 
 
-    ut .= m.conjmatr .* vt
-    vt .= m.conjmatr .* conj.(vt)
+    fft_u .= m.conjmatr .* fft_v
+    fft_v .= m.conjmatr .* conj.(fft_v)
 
-    fft!(ut,2)
-    fft!(vt,2)
+    fft!(fft_u,2)
+    fft!(fft_v,2)
 
-    ut .*= transpose(m.u)
-    vt .*= transpose(m.u) 
-
-    ut, vt
+    fft_u .*= transpose(m.u)
+    fft_v .*= transpose(m.u) 
 
 end
 
@@ -216,9 +215,15 @@ function champs_2(m, t,
     champu = transpose(fft_ubar) .+ champu
     champv = transpose(fft_vbar) .+ champv
 
-    ffu, ffv = ftau(m, t, champu .+ transpose(fft_ug), champv .+ transpose(fft_vg))
+    ffu    = similar(champu)
+    ffv    = similar(champv)
 
-    champu, champv = ftau(m, t, champu, champv)
+    ffu   .= champu .+ transpose(fft_ug)
+    ffv   .= champv .+ transpose(fft_vg)
+
+    ftau!(m, t, ffu, ffv)
+
+    ftau!(m, t, champu, champv)
 
     champu = fft(champu, 1)
     champv = fft(champv, 1)
