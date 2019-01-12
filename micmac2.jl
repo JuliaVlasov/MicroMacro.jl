@@ -1,4 +1,5 @@
 using FFTW, LinearAlgebra
+using BenchmarkTools
 
 """ 
 Class with initial data Relativistic Klein-Gordon equation
@@ -114,13 +115,11 @@ end
 
 function reconstr(u, t, T, ntau)
 
-    w   = zeros(ComplexF64, ntau)
-    w  .= collect(0:ntau-1)
-    w[ntau÷2:end] .-= ntau
-    w  .= exp.(1im * 2π / T * w * t)
-    v   = fft(u,1)
+    v    = fft(u,1)
+    w    = vcat(0:ntau÷2-1, -ntau÷2:-1)
+    v  .*= exp.(1im * 2π / T * w * t)
 
-    vec(sum(v .* w, dims=1) / ntau)
+    vec(sum(v, dims=1) / ntau)
 
 end
 
@@ -501,7 +500,7 @@ function run(self, dt)
     ichampgu = zeros(ComplexF64,(ntau,nx))
     ichampgv = zeros(ComplexF64,(ntau,nx))
 
-    init_2!(ichampgu, ichampgv, self, 0.0, fft_ubar, fft_vbar, fft_ug, fft_vg )
+    init_2!(ichampgu, ichampgv, self, t, fft_ubar, fft_vbar, fft_ug, fft_vg )
 
     champubaru = similar(fft_ubar)
     champubarv = similar(fft_vbar)
@@ -511,41 +510,44 @@ function run(self, dt)
     while t < Tfinal
 
         iter = iter + 1
-        dt = min(Tfinal-t, dt)
+        dt   = min(Tfinal-t, dt)
+        hdt  = dt / 2
 
         champubaru .= fft_ubar
         champubarv .= fft_vbar
         champmoyu  .= fft_ug
         champmoyv  .= fft_vg
 
-        champs_2!(ichampgu, ichampgv, self, t, champubaru, champubarv, champmoyu, champmoyv ) 
+        champs_2!(ichampgu, ichampgv, self, t, 
+                  champubaru, champubarv, champmoyu, champmoyv ) 
 
-        champubaru .= fft_ubar .+ dt / 2 * champubaru
-        champubarv .= fft_vbar .+ dt / 2 * champubarv
+        champubaru .= fft_ubar .+ hdt * champubaru
+        champubarv .= fft_vbar .+ hdt * champubarv
 
         champmoyu  .= fft_ug .+ (
-             epsilon * reconstr(ichampgu, (t + dt / 2) / epsilon, T, ntau)
-          .- epsilon * reconstr(ichampgu, t / epsilon, T, ntau) 
-          .+ dt / 2 * champmoyu )
+             epsilon * reconstr(ichampgu, (t + hdt) / epsilon, T, ntau)
+          .- epsilon * reconstr(ichampgu,  t        / epsilon, T, ntau) 
+          .+ hdt * champmoyu )
 
         champmoyv  .= fft_vg .+ (
-             epsilon * reconstr(ichampgv, (t + dt / 2) / epsilon, T, ntau) 
-          .- epsilon * reconstr(ichampgv, t / epsilon, T, ntau) 
-          .+ dt / 2 * champmoyv )
+             epsilon * reconstr(ichampgv, (t + hdt) / epsilon, T, ntau) 
+          .- epsilon * reconstr(ichampgv,  t        / epsilon, T, ntau) 
+          .+ hdt * champmoyv )
 
-        champs_2!(ichampgu, ichampgv, self, t + dt/2, champubaru, champubarv, champmoyu, champmoyv ) 
+        champs_2!(ichampgu, ichampgv, self, t + hdt, 
+                  champubaru, champubarv, champmoyu, champmoyv ) 
 
         fft_ubar .+= dt * champubaru
         fft_vbar .+= dt * champubarv
 
-        fft_ug .= fft_ug .+ (
+        fft_ug .+= (
             epsilon * reconstr(ichampgu, (t + dt) / epsilon, T, ntau) 
-         .- epsilon * reconstr(ichampgu, t / epsilon, T, ntau) 
+         .- epsilon * reconstr(ichampgu,  t       / epsilon, T, ntau) 
          .+ dt * champmoyu )
 
-        fft_vg .= fft_vg .+ (
+        fft_vg .+= (
             epsilon * reconstr(ichampgv, (t + dt) / epsilon, T, ntau) 
-         .- epsilon * reconstr(ichampgv, t / epsilon, T, ntau) 
+         .- epsilon * reconstr(ichampgv,  t       / epsilon, T, ntau) 
          .+ dt * champmoyv )
 
         t = t + dt
@@ -665,6 +667,6 @@ data = DataSet(xmin, xmax, N, epsilon, T, Tfinal)
 dt = 2 ^ (-3) * Tfinal / 16
 
 m = MicMac(data, ntau)
-@time u, v = run(m, dt)
+@btime u, v = run(m, dt)
 
 uref, vref = compute_error(u, v, data)
