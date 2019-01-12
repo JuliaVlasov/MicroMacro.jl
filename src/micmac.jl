@@ -1,6 +1,6 @@
 using FFTW, LinearAlgebra
 
-export MicMac, run
+export MicMac, solve
 
 mutable struct MicMac
 
@@ -421,7 +421,7 @@ function C1!(champu :: Array{ComplexF64,2},
 
 end
 
-function run(self, dt)
+function solve(self, dt)
 
     Tfinal = self.data.Tfinal
 

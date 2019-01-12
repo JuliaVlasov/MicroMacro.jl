@@ -1,56 +1,11 @@
 using FFTW, LinearAlgebra
 
-function linear(U, temps, T, ntau)
-    dtau   = T / ntau
-    Ubis   = vcat(U, transpose(U[1, :]))
-    temps  = temps % T
-    repere = temps / dtau + 1
-    indice = trunc(Int64,repere)+1
-    (indice + 1 - repere) * Ubis[indice, :] + (repere - indice) * Ubis[indice + 1, :]
-end
-
-
-function trigo(U, temps, T, ntau)
-
-    W  = zeros(ComplexF64, ntau)
-    for i in 0:ntau-1
-        W[i+1] = i
-    end
-    for i in ntau÷2:ntau-1
-        W[i] = W[i] - ntau
-    end
-    W = exp.(1im * 2 * pi / T * W * temps)
-    V = fft(U, dims=1)
-
-    sum(V * transpose(W),dims=0) / ntau
-
-end
-
-
-function reconstr(U, temps, T, ntau,type_reconst = 2)
-
-    if type_reconst == 1
-
-        linear(U, temps, T, ntau)
-
-    else
-
-        trigo(U, temps, T, ntau)
-
-    end
-
-end
-
-function erreur(u, v, epsilon, dataset)
-
-    # ici la reference a été calculee par micmac
-
-    str0 = ["", "donnees_cubique_128_micmac/",
-            "donnees_FS_128_micmac/",
-            "donnees_data3_128_micmac/"]
+function compute_error(u, v, data::DataSet)
 
     str3 = "donnee_"
     str5 = ".txt"
+    
+    epsilon = data.epsilon
 
     if (epsilon == 10       )  str4 = "10"        end
     if (epsilon == 5        )  str4 = "5"         end
@@ -76,54 +31,50 @@ function erreur(u, v, epsilon, dataset)
     if (epsilon == 0.0000025)  str4 = "0_0000025" end
     if (epsilon == 0.000001 )  str4 = "0_000001"  end
 
-    fichier = joinpath(str0[dataset], str3 * str4 * str5)
+    ref_file = joinpath("donnees_data3_128_micmac/", str3 * str4 * str5)
+    
+    ndata = 128
+    uv    = zeros(Float64, (4, ndata))
 
-    uv = zeros(Float64, (4, 128))
-
-    open(fichier) do f
+    open(ref_file) do f
 
         for (j,line) in enumerate(eachline(f))
-            for (i, v) in enumerate( [ parse(Float64, v) for v in split(line)]) 
-                uv[i, j] = v
+            for (i, val) in enumerate( [ parse(Float64, val) for val in split(line)]) 
+                uv[i, j] = val
             end
         end
 
     end
 
-    nx   = size(u)[2]
+    nx   = data.nx
+    xmin = data.xmin
+    xmax = data.xmax
+    T    = data.T
+    x    = data.x
+    dx   = (xmax - xmin) / nx
+    L    = xmax - xmin
+    kx   = zeros(Float64, nx)
+    kx   = 2π / (xmax - xmin) * vcat(0:nx÷2-1,-nx÷2:-1)
 
-    if dataset == 1
-        xmin = -8
-        xmax = 8
-        t    = 0.4
-    elseif dataset == 2
-        xmin = 0
-        xmax = 2 * pi
-        t = 1
-    elseif dataset == 3
-        xmin = 0
-        xmax = 2 * pi
-        T = 2 * pi
-        t = 0.25
+    ua = zeros(ComplexF64, (4, nx))
+    va = fft(uv, 2) / ndata
+    k  = zeros(Float64, ndata)
+    k .= 2π / L * vcat(0:ndata÷2-1,-ndata÷2:-1)
+
+    for j in 1:ndata
+        vv  = va[:, j]
+	    ua .= ua .+ vv .* exp.(1im * k[j] * (x'.- xmin))
     end
 
-    dx = (xmax - xmin) / nx
-    x  = collect(range(xmin, stop=xmax, length=nx+1)[1:end-1])
-    k  = collect(2 * pi / (xmax - xmin) * vcat(0:nx÷2-1,-nx÷2:-1))
+    uref = ua[1, :] .+ 1im * ua[2, :]
+    vref = ua[3, :] .+ 1im * ua[4, :]
 
-    if size(uv)[2] != nx
-        uv = reconstr_x(uv, x, xmin, xmax)
-    end
+    refH1 = sqrt(dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(uref,1),1))^2 
+               + dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(vref,1),1))^2)
 
-    uvu = vec(uv[1, :] .+ 1im * uv[2, :])
-    uvv = vec(uv[3, :] .+ 1im * uv[4, :])
-
-    refH1 = sqrt(dx * norm(ifft(1im * sqrt.(1 .+ k.^2) .* fft(uvu)))^2 
-               + dx * norm(ifft(1im * sqrt.(1 .+ k.^2) .* fft(uvv)))^2)
-
-    err  = (sqrt(dx * norm(ifft(1im * sqrt.(1 .+ k.^2) .* fft(u .- uvu)))^2 
-               + dx * norm(ifft(1im * sqrt.(1 .+ k.^2) .* fft(v .- uvv)))^2)) / refH1
-
+    err  = (sqrt(dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(u .- uref,1),1))^2 
+               + dx * norm(ifft(1im * sqrt.(1 .+ kx.^2) .* fft(v .- vref,1),1))^2)) / refH1
+    
     err
 
 end

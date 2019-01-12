@@ -1,6 +1,8 @@
 using FFTW, LinearAlgebra
 
 
+export DataSet
+
 """ 
 Class with initial data Relativistic Klein-Gordon equation
 """
