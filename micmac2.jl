@@ -65,6 +65,8 @@ mutable struct MicMac
     v         :: Array{ComplexF64,1}
     ut        :: Array{ComplexF64,2}
     vt        :: Array{ComplexF64,2}
+    z         :: Array{ComplexF64,2}
+    dz        :: Array{ComplexF64,2}
 
     function MicMac( data, ntau )
 
@@ -103,9 +105,11 @@ mutable struct MicMac
         v  = zeros(ComplexF64,nx)
         ut = zeros(ComplexF64,(nx, ntau))
         vt = zeros(ComplexF64,(nx, ntau))
+        z  = zeros(ComplexF64,(nx, ntau))
+        dz = zeros(ComplexF64,(nx, ntau))
 
         new( data, ntau, ktau, matr, conjmatr, A1 , A2, 
-             sigma, llambda, epsilon, u, v, ut, vt)
+             sigma, llambda, epsilon, u, v, ut, vt, z, dz)
 
     end
 
@@ -215,7 +219,7 @@ function duftau!(
     m.vt .= (m.u .* fft_v) .* m.conjmatr'
     ifft!(m.vt, 1)
 
-    z  = (m.ut  .+ conj.(m.vt)) / 2
+    m.z  .= (m.ut  .+ conj.(m.vt)) / 2
 
     m.ut .= (m.u .* fft_du) .* m.conjmatr'
     ifft!(m.ut, 1)
@@ -223,12 +227,12 @@ function duftau!(
     m.vt .= (m.u .* fft_dv) .* m.conjmatr'
     ifft!(m.vt, 1)
 
-    dz = (m.ut .+ conj.(m.vt)) / 2
+    m.dz .= (m.ut .+ conj.(m.vt)) / 2
 
-    fz1 = 2 * abs.(z).^2 .* dz .+ z.^2 .* conj.(dz)
+    m.z = 2 * abs.(m.z).^2 .* m.dz .+ m.z.^2 .* conj.(m.dz)
 
-    m.ut .= m.matr' .* fz1
-    m.vt .= m.matr' .* conj.(fz1)
+    m.ut .= m.matr' .* m.z
+    m.vt .= m.matr' .* conj.(m.z)
 
     fft!(m.ut,1)
     fft!(m.vt,1)
@@ -262,17 +266,17 @@ function dtftau!(champu1 :: Array{ComplexF64, 2},
     ifft!(m.ut, 1)
     ifft!(m.vt, 1)
 
-    z = ( m.ut .+ conj.(m.vt)) / 2
+    m.z .= ( m.ut .+ conj.(m.vt)) / 2
 
     m.ut .= ifft(m.u .* (1im * m.A1) .* fft_u,1) .* m.conjmatr'
     m.vt .= ifft(m.u .* (1im * m.A1) .* fft_v,1) .* m.conjmatr'
 
-    dz = (m.ut .+ conj.(m.vt)) / 2
+    m.dz .= (m.ut .+ conj.(m.vt)) / 2
 
-    fz1 = 2 * abs.(z).^2 .* dz .+ z.^2 .* conj.(dz)
+    m.dz .= 2 * abs.(m.z).^2 .* m.dz .+ m.z.^2 .* conj.(m.dz)
 
-    m.ut .= m.matr' .* fz1
-    m.vt .= m.matr' .* conj.(fz1)
+    m.ut .= m.matr' .* m.dz
+    m.vt .= m.matr' .* conj.(m.dz)
 
     fft!(m.ut, 1)
     fft!(m.vt, 1)
@@ -283,10 +287,10 @@ function dtftau!(champu1 :: Array{ComplexF64, 2},
     transpose!(champu1, m.ut)
     transpose!(champv1, m.vt)
 
-    fz1 = abs.(z).^2 .* z
+    m.z .= abs.(m.z).^2 .* m.z
 
-    m.ut .= m.matr' .* fz1
-    m.vt .= m.matr' .* conj.(fz1)
+    m.ut .= m.matr' .* m.z
+    m.vt .= m.matr' .* conj.(m.z)
 
     fft!(m.ut, 1)
     fft!(m.vt, 1)
@@ -335,6 +339,10 @@ end
 
 function champs_2!(champu   :: Array{ComplexF64,2},
                    champv   :: Array{ComplexF64,2},
+                   champu1  :: Array{ComplexF64,2},
+                   champv1  :: Array{ComplexF64,2},
+                   champu2  :: Array{ComplexF64,2},
+                   champv2  :: Array{ComplexF64,2},
                    m        :: MicMac, 
                    t        :: Float64, 
                    fft_ubar :: Vector{ComplexF64}, 
@@ -382,11 +390,6 @@ function champs_2!(champu   :: Array{ComplexF64,2},
     champvbar = champv[1, :] / m.ntau
 
     duftau!(champu, champv, m, t, fft_ubar, fft_vbar, champubar, champvbar)
-
-    champu1 = similar(champu)
-    champv1 = similar(champv)
-    champu2 = similar(champu)
-    champv2 = similar(champv)
 
     dtftau!(champu1, champv1, champu2, champv2, m, t, fft_ubar, fft_vbar)
 
@@ -499,6 +502,11 @@ function run(self, dt)
     ichampgu = zeros(ComplexF64,(ntau,nx))
     ichampgv = zeros(ComplexF64,(ntau,nx))
 
+    champu1 = zeros(ComplexF64,(ntau,nx))
+    champv1 = zeros(ComplexF64,(ntau,nx))
+    champu2 = zeros(ComplexF64,(ntau,nx))
+    champv2 = zeros(ComplexF64,(ntau,nx))
+
     init_2!(ichampgu, ichampgv, self, t, fft_ubar, fft_vbar, fft_ug, fft_vg )
 
     champubaru = similar(fft_ubar)
@@ -517,7 +525,10 @@ function run(self, dt)
         champmoyu  .= fft_ug
         champmoyv  .= fft_vg
 
-        champs_2!(ichampgu, ichampgv, self, t, 
+        champs_2!(ichampgu, ichampgv, 
+                  champu1, champv1,
+                  champu2, champv2,
+                  self, t, 
                   champubaru, champubarv, champmoyu, champmoyv ) 
 
         champubaru .= fft_ubar .+ hdt * champubaru
@@ -533,7 +544,10 @@ function run(self, dt)
           .- epsilon * reconstr(ichampgv,  t        / epsilon, T, ntau) 
           .+ hdt * champmoyv )
 
-        champs_2!(ichampgu, ichampgv, self, t + hdt, 
+        champs_2!(ichampgu, ichampgv, 
+                  champu1, champv1,
+                  champu2, champv2,
+                  self, t + hdt, 
                   champubaru, champubarv, champmoyu, champmoyv ) 
 
         fft_ubar .+= dt * champubaru
