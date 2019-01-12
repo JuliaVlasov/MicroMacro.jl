@@ -17,27 +17,28 @@ function ftau(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64})
     m.v  .= exp.(1im * t * m.A1)
     m.v .*= fft_u
     ifft!(m.v,1)
-    m.ut .= transpose(m.v) .* m.matr
+    m.ut .= m.v .* m.conjmatr'
 
     m.v  .= exp.(1im * t * m.A1)
     m.v .*= fft_v
     ifft!(m.v,1)
-    m.vt .= transpose(m.v) .* m.matr
+    m.vt .= m.v .* m.conjmatr'
 
     m.ut = (m.ut .+ conj.(m.vt)) / 2
     m.vt = abs.(m.ut) .^ (2 * m.sigma) .* m.ut
 
     m.u .= -1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1)
 
-    m.ut .= m.conjmatr .* m.vt
-    fft!(m.ut,2)
-    m.ut .*= transpose(m.u)
+    m.ut .= m.matr' .* m.vt
+    fft!(m.ut,1)
+    m.ut .*= m.u
 
-    m.vt .= m.conjmatr .* conj.(m.vt)
-    fft!(m.vt,2)
-    m.vt .*= transpose(m.u) 
+    m.vt .= m.matr' .* conj.(m.vt)
+    fft!(m.vt,1)
+    m.vt .*= m.u
 
-    m.ut, m.vt
+    copy(transpose(m.ut)), copy(transpose(m.vt))
+
 end
 
 function ftau!(m, t, fft_u :: Array{ComplexF64,2}, 
@@ -80,34 +81,34 @@ function duftau(m, t,
     m.u .= exp.(1im * t * m.A1) 
     m.v .= -1im * m.llambda * m.A2 .* conj.(m.u)
 
-    m.ut .= transpose(m.u .* fft_u) .* m.matr
-    ifft!(m.ut,2)
+    m.ut .= (m.u .* fft_u) .* m.conjmatr'
+    ifft!(m.ut, 1)
 
-    m.vt .= transpose(m.u .* fft_v) .* m.matr
-    ifft!(m.vt, 2)
+    m.vt .= (m.u .* fft_v) .* m.conjmatr'
+    ifft!(m.vt, 1)
 
     z  = (m.ut  .+ conj.(m.vt)) / 2
 
-    m.ut .= transpose(m.u .* fft_du) .* m.matr
-    ifft!(m.ut, 2)
+    m.ut .= (m.u .* fft_du) .* m.conjmatr'
+    ifft!(m.ut, 1)
 
-    m.vt .= transpose(m.u .* fft_dv) .* m.matr
-    ifft!(m.vt, 2)
+    m.vt .= (m.u .* fft_dv) .* m.conjmatr'
+    ifft!(m.vt, 1)
 
     dz = (m.ut .+ conj.(m.vt)) / 2
 
     fz1 = 2 * abs.(z).^2 .* dz .+ z.^2 .* conj.(dz)
 
-    m.ut .= m.conjmatr .* fz1
-    m.vt .= m.conjmatr .* conj.(fz1)
+    m.ut .= m.matr' .* fz1
+    m.vt .= m.matr' .* conj.(fz1)
 
-    fft!(m.ut,2)
-    fft!(m.vt,2)
+    fft!(m.ut,1)
+    fft!(m.vt,1)
     
-    m.ut .*= transpose(m.v) 
-    m.vt .*= transpose(m.v)
+    m.ut .*= m.v 
+    m.vt .*= m.v
 
-    m.ut, m.vt
+    copy(transpose(m.ut)), copy(transpose(m.vt))
 
 end
 
@@ -408,8 +409,8 @@ mutable struct MicMac
 
         u  = zeros(ComplexF64,nx)
         v  = zeros(ComplexF64,nx)
-        ut = zeros(ComplexF64,(ntau,nx))
-        vt = zeros(ComplexF64,(ntau,nx))
+        ut = zeros(ComplexF64,(nx, ntau))
+        vt = zeros(ComplexF64,(nx, ntau))
 
         new( data, ntau, ktau, matr, conjmatr, A1 , A2, 
              sigma, llambda, epsilon, u, v, ut, vt)
