@@ -1,5 +1,117 @@
 using FFTW, LinearAlgebra
 
+""" 
+Class with initial data Relativistic Klein-Gordon equation
+"""
+struct DataSet
+
+    nx        :: Int64  
+    xmin      :: Float64
+    xmax      :: Float64
+    epsilon   :: Float64 
+    kx        :: Vector{Float64}
+    T         :: Float64
+    Tfinal    :: Float64
+    sigma     :: Int64
+    llambda   :: Int64
+    x         :: Array{Float64,1}
+    u         :: Array{ComplexF64,1}
+    v         :: Array{ComplexF64,1}
+    dx        :: Float64
+    
+    function DataSet( xmin, xmax, nx, epsilon, T, Tfinal)
+
+        kx  = zeros(Float64, nx)
+        kx .= 2 * pi / (xmax - xmin) * vcat(0:nx÷2-1,-nx÷2:-1)
+
+        x   = zeros(Float64, nx)
+        x  .= range(xmin, stop=xmax, length=nx+1)[1:end-1]
+        dx  = (xmax - xmin) / nx
+
+        ϕ  = zeros(ComplexF64, nx)
+        γ  = zeros(ComplexF64, nx)
+
+        ϕ  .= (1 + 1im) .* cos.(x)
+        γ  .= (1 - 1im) .* sin.(x)
+
+        sigma   = 1
+        llambda = -1
+
+        u = zeros(ComplexF64, nx)
+        v = zeros(ComplexF64, nx)
+
+        u .= ϕ .- 1im * ifft((1 .+ epsilon * kx.^2) .^ (-1/2) .* fft(γ,1), 1)
+        v .= conj.(ϕ) .- 1im * ifft((1 .+ epsilon * kx.^2) .^ (-1/2) .* fft(conj.(γ),1),1)
+
+        new(nx, xmin, xmax, epsilon, kx, T, Tfinal, sigma, llambda, x, u, v, dx)
+
+    end
+
+end
+
+mutable struct MicMac
+
+    data      :: DataSet
+    ntau      :: Int64
+    ktau      :: Vector{Float64}
+    matr      :: Vector{ComplexF64}
+    conjmatr  :: Vector{ComplexF64}
+    A1        :: Vector{Float64}
+    A2        :: Vector{Float64}
+    sigma     :: Int64
+    llambda   :: Int64
+    epsilon   :: Float64
+    u         :: Array{ComplexF64,1}
+    v         :: Array{ComplexF64,1}
+    ut        :: Array{ComplexF64,2}
+    vt        :: Array{ComplexF64,2}
+
+    function MicMac( data, ntau )
+
+        nx        = data.nx
+        T         = data.T
+        kx        = data.kx
+
+        epsilon   = data.epsilon
+
+        llambda   = data.llambda
+        sigma     = data.sigma
+
+        tau       = zeros(Float64, ntau)
+        tau      .= T * collect(0:ntau-1) / ntau
+        ktau      = similar(tau)
+        ktau     .= 2π / T * vcat(0:ntau÷2-1,-ntau÷2:-1)
+        ktau[1]   = 1.0
+
+        matr      = zeros(ComplexF64,ntau)
+        conjmatr  = zeros(ComplexF64,ntau)
+        matr     .= exp.( 1im * tau)
+        conjmatr .= exp.(-1im * tau)
+
+        A1 = zeros(Float64, nx)
+        A2 = zeros(Float64, nx)
+
+        if epsilon > 0
+            A1 .= (sqrt.(1 .+ epsilon * kx .^2) .- 1) / epsilon
+            A2 .= (1 .+ epsilon * kx .^2) .^ (-1/2)
+        else
+            A1 .= 0.5 * kx .^ 2
+            A2 .= 1.0
+        end
+
+        u  = zeros(ComplexF64,nx)
+        v  = zeros(ComplexF64,nx)
+        ut = zeros(ComplexF64,(nx, ntau))
+        vt = zeros(ComplexF64,(nx, ntau))
+
+        new( data, ntau, ktau, matr, conjmatr, A1 , A2, 
+             sigma, llambda, epsilon, u, v, ut, vt)
+
+    end
+
+end
+
+
 function reconstr(u, t, T, ntau)
 
     w   = zeros(ComplexF64, ntau)
@@ -9,6 +121,41 @@ function reconstr(u, t, T, ntau)
     v   = fft(u,1)
 
     vec(sum(v .* w, dims=1) / ntau)
+
+end
+
+function ftau!(champu :: Array{ComplexF64,2},
+               champv :: Array{ComplexF64,2},
+               m      :: MicMac, 
+               t      :: Float64,
+               fft_u  :: Vector{ComplexF64}, 
+               fft_v  :: Vector{ComplexF64})
+
+    m.v  .= exp.(1im * t * m.A1)
+    m.v .*= fft_u
+    ifft!(m.v,1)
+    m.ut .= m.v .* m.conjmatr'
+
+    m.v  .= exp.(1im * t * m.A1)
+    m.v .*= fft_v
+    ifft!(m.v,1)
+    m.vt .= m.v .* m.conjmatr'
+
+    m.ut = (m.ut .+ conj.(m.vt)) / 2
+    m.vt = abs.(m.ut) .^ (2 * m.sigma) .* m.ut
+
+    m.u .= -1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1)
+
+    m.ut .= m.matr' .* m.vt
+    fft!(m.ut,1)
+    m.ut .*= m.u
+
+    m.vt .= m.matr' .* conj.(m.vt)
+    fft!(m.vt,1)
+    m.vt .*= m.u
+
+    transpose!(champu, m.ut)
+    transpose!(champv, m.vt)
 
 end
 
@@ -160,13 +307,16 @@ function dtftau(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64})
 
 end
 
-function init_2!(m, t, 
+function init_2!(champu   :: Array{ComplexF64,2},
+                 champv   :: Array{ComplexF64,2},
+                 m        :: MicMac,
+                 t        :: Float64, 
                  fft_ubar :: Vector{ComplexF64}, 
                  fft_vbar :: Vector{ComplexF64},
                  fft_ug   :: Vector{ComplexF64}, 
                  fft_vg   :: Vector{ComplexF64})
 
-    champu, champv = ftau(m, t, fft_ubar, fft_vbar)
+    ftau!(champu, champv, m, t, fft_ubar, fft_vbar)
 
     fft!(champu, 1)
     fft!(champv, 1)
@@ -308,117 +458,6 @@ function C1(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64} )
     return champu, champv
 end
 
-""" 
-Class with initial data Relativistic Klein-Gordon equation
-"""
-struct DataSet
-
-    nx        :: Int64  
-    xmin      :: Float64
-    xmax      :: Float64
-    epsilon   :: Float64 
-    kx        :: Vector{Float64}
-    T         :: Float64
-    Tfinal    :: Float64
-    sigma     :: Int64
-    llambda   :: Int64
-    x         :: Array{Float64,1}
-    u         :: Array{ComplexF64,1}
-    v         :: Array{ComplexF64,1}
-    dx        :: Float64
-    
-    function DataSet( xmin, xmax, nx, epsilon, T, Tfinal)
-
-        kx  = zeros(Float64, nx)
-        kx .= 2 * pi / (xmax - xmin) * vcat(0:nx÷2-1,-nx÷2:-1)
-
-        x   = zeros(Float64, nx)
-        x  .= range(xmin, stop=xmax, length=nx+1)[1:end-1]
-        dx  = (xmax - xmin) / nx
-
-        ϕ  = zeros(ComplexF64, nx)
-        γ  = zeros(ComplexF64, nx)
-
-        ϕ  .= (1 + 1im) .* cos.(x)
-        γ  .= (1 - 1im) .* sin.(x)
-
-        sigma   = 1
-        llambda = -1
-
-        u = zeros(ComplexF64, nx)
-        v = zeros(ComplexF64, nx)
-
-        u .= ϕ .- 1im * ifft((1 .+ epsilon * kx.^2) .^ (-1/2) .* fft(γ,1), 1)
-        v .= conj.(ϕ) .- 1im * ifft((1 .+ epsilon * kx.^2) .^ (-1/2) .* fft(conj.(γ),1),1)
-
-        new(nx, xmin, xmax, epsilon, kx, T, Tfinal, sigma, llambda, x, u, v, dx)
-
-    end
-
-end
-
-mutable struct MicMac
-
-    data      :: DataSet
-    ntau      :: Int64
-    ktau      :: Vector{Float64}
-    matr      :: Vector{ComplexF64}
-    conjmatr  :: Vector{ComplexF64}
-    A1        :: Vector{Float64}
-    A2        :: Vector{Float64}
-    sigma     :: Int64
-    llambda   :: Int64
-    epsilon   :: Float64
-    u         :: Array{ComplexF64,1}
-    v         :: Array{ComplexF64,1}
-    ut        :: Array{ComplexF64,2}
-    vt        :: Array{ComplexF64,2}
-
-    function MicMac( data, ntau )
-
-        nx        = data.nx
-        T         = data.T
-        kx        = data.kx
-
-        epsilon   = data.epsilon
-
-        llambda   = data.llambda
-        sigma     = data.sigma
-
-        tau       = zeros(Float64, ntau)
-        tau      .= T * collect(0:ntau-1) / ntau
-        ktau      = similar(tau)
-        ktau     .= 2π / T * vcat(0:ntau÷2-1,-ntau÷2:-1)
-        ktau[1]   = 1.0
-
-        matr      = zeros(ComplexF64,ntau)
-        conjmatr  = zeros(ComplexF64,ntau)
-        matr     .= exp.( 1im * tau)
-        conjmatr .= exp.(-1im * tau)
-
-        A1 = zeros(Float64, nx)
-        A2 = zeros(Float64, nx)
-
-        if epsilon > 0
-            A1 .= (sqrt.(1 .+ epsilon * kx .^2) .- 1) / epsilon
-            A2 .= (1 .+ epsilon * kx .^2) .^ (-1/2)
-        else
-            A1 .= 0.5 * kx .^ 2
-            A2 .= 1.0
-        end
-
-        u  = zeros(ComplexF64,nx)
-        v  = zeros(ComplexF64,nx)
-        ut = zeros(ComplexF64,(nx, ntau))
-        vt = zeros(ComplexF64,(nx, ntau))
-
-        new( data, ntau, ktau, matr, conjmatr, A1 , A2, 
-             sigma, llambda, epsilon, u, v, ut, vt)
-
-    end
-
-end
-
 function run(self, dt)
 
     Tfinal = self.data.Tfinal
@@ -431,6 +470,7 @@ function run(self, dt)
 
     epsilon = self.data.epsilon
 
+    nx   = self.data.nx
     dx   = self.data.dx
     ktau = self.ktau
 
@@ -462,7 +502,10 @@ function run(self, dt)
     fft_ug .= fft_u
     fft_vg .= fft_v
 
-    init_2!(self, 0.0, fft_ubar, fft_vbar, fft_ug, fft_vg )
+    champu = zeros(ComplexF64,(ntau,nx))
+    champv = zeros(ComplexF64,(ntau,nx))
+
+    init_2!(champu, champv, self, 0.0, fft_ubar, fft_vbar, fft_ug, fft_vg )
 
     while t < Tfinal
 
