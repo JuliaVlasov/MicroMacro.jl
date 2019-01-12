@@ -286,19 +286,25 @@ function C1(m, t, fft_u :: Vector{ComplexF64}, fft_v :: Vector{ComplexF64} )
 
     champu, champv = ftau(m, t, fft_u, fft_v)
 
-    champu_fft = fft(champu, 1)
-    champv_fft = fft(champv, 1)
+    fft!(champu, 1)
+    fft!(champv, 1)
 
-    champu_fft[1, :] .= 0.0
-    champv_fft[1, :] .= 0.0
+    champu[1, :] .= 0.0
+    champv[1, :] .= 0.0
 
-    champu = ifft(champu_fft ./ (1im * m.ktau), 1)
-    champv = ifft(champv_fft ./ (1im * m.ktau), 1)
+    champu ./= (1im * m.ktau)
+    champv ./= (1im * m.ktau)
 
-    C1u = transpose(fft_u) .+ m.epsilon * champu
-    C1v = transpose(fft_v) .+ m.epsilon * champv
+    ifft!(champu, 1)
+    ifft!(champv, 1)
 
-    return C1u, C1v
+    champu .*= m.epsilon 
+    champv .*= m.epsilon 
+
+    champu .+= transpose(fft_u)
+    champv .+= transpose(fft_v) 
+
+    return champu, champv
 end
 
 """ 
