@@ -5,7 +5,7 @@ from numpy import exp, conj, abs, pi, sum, sqrt, arange, newaxis
 from numpy import sin, cos, shape
 from numpy import linspace, zeros, concatenate, array, ravel
 from numpy.linalg import norm
-import os
+import os, time
 
 def reconstr(U, temps, T, ntau):
 
@@ -125,8 +125,6 @@ def champs_2(m, t, fft_ubar, fft_vbar, fft_ug, fft_vg):
 
     champu = fft_ubar + champu
     champv = fft_vbar + champv
-
-    print(fft_ug.shape, fft_vg.shape)
 
     ffu, ffv = ftau(m, t, champu + fft_ug, champv + fft_vg)
 
@@ -278,7 +276,6 @@ class MicMac:
         fft_ubar, fft_vbar, fft_ug, fft_vg = init_2(self, 0, fft_u0, fft_v0)
 
         while t < Tfinal:
-            print(iter, t)
             iter = iter + 1
             dt = min(Tfinal-t, dt)
 
@@ -364,7 +361,6 @@ def erreur(u, v, epsilon):
 
     }
     fichier = os.path.join(str0, str3 + str4[epsilon] + str5)
-    print(fichier)
 
     uv = zeros((4, 128))
     with open(fichier, "r") as azerty:
@@ -396,7 +392,6 @@ def erreur(u, v, epsilon):
 
     refH1 = sqrt(dx * norm(ifft(1j * sqrt(1 + k ** 2) * fft(uvu))) ** 2 
                + dx * norm(ifft(1j * sqrt(1 + k ** 2) * fft(uvv))) ** 2)
-    print(refH1)
     
     err = (sqrt(dx * norm(ifft(1j * sqrt(1 + k ** 2) * fft(u - uvu))) ** 2 
               + dx * norm(ifft(1j * sqrt(1 + k ** 2) * fft(v - uvv))) ** 2)) / refH1
@@ -406,16 +401,18 @@ def erreur(u, v, epsilon):
 xmin    = 0
 xmax    = 2 * pi
 T       = 2 * pi
-N       = 64
-ntau    = 32
+N       = 256
+ntau    = 128
 Tfinal  = 0.25
 epsilon = 0.1
 
 data = DataSet(xmin, xmax, N, epsilon, Tfinal)
 
-dt = 2 ** (-4) * Tfinal / 16
+dt = 2 ** (-3) * Tfinal / 16
 
 m = MicMac(data, ntau)
+start = time.time()
 u, v = m.run(dt)
-
+stop = time.time()
+print(f'time = {stop-start}')
 print(erreur(u, v, epsilon))
