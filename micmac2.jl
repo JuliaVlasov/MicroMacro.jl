@@ -197,8 +197,8 @@ function champs_2(m, t,
 
     champu, champv = ftau(m, t, fft_ubar, fft_vbar)
 
-    champu = fft(champu, 1)
-    champv = fft(champv, 1)
+    fft!(champu, 1)
+    fft!(champv, 1)
 
     champu[1, :] .= 0.0
     champv[1, :] .= 0.0
@@ -206,14 +206,17 @@ function champs_2(m, t,
     dtauh1u = ifft(champu, 1)
     dtauh1v = ifft(champv, 1)
 
-    champu = champu ./ (1im * m.ktau)
-    champv = champv ./ (1im * m.ktau)
+    champu ./= (1im * m.ktau)
+    champv ./= (1im * m.ktau)
 
-    champu = m.epsilon * ifft(champu, 1)
-    champv = m.epsilon * ifft(champv, 1)
+    ifft!(champu, 1)
+    ifft!(champv, 1)
 
-    champu = transpose(fft_ubar) .+ champu
-    champv = transpose(fft_vbar) .+ champv
+    champu .*= m.epsilon 
+    champv .*= m.epsilon 
+
+    champu .+= transpose(fft_ubar)
+    champv .+= transpose(fft_vbar) 
 
     ffu    = similar(champu)
     ffv    = similar(champv)
@@ -225,8 +228,8 @@ function champs_2(m, t,
 
     ftau!(m, t, champu, champv)
 
-    champu = fft(champu, 1)
-    champv = fft(champv, 1)
+    fft!(champu, 1)
+    fft!(champv, 1)
 
     champubar = champu[1, :] / m.ntau
     champvbar = champv[1, :] / m.ntau
@@ -235,26 +238,32 @@ function champs_2(m, t,
 
     champu2, champv2 = dtftau(m, t, fft_ubar, fft_vbar)
 
-    champu = fft(champu1 .+ champu2, 1)
-    champv = fft(champv1 .+ champv2, 1)
+    champu .= champu1 .+ champu2
+    champv .= champv1 .+ champv2
+
+    fft!(champu, 1)
+    fft!(champv, 1)
 
     champu[1, :] .= 0.0 
     champv[1, :] .= 0.0  
 
-    champu = champu ./ (1im * m.ktau)
-    champv = champv ./ (1im * m.ktau)
+    champu ./= (1im * m.ktau)
+    champv ./= (1im * m.ktau)
 
-    champu = m.epsilon * ifft(champu, 1)
-    champv = m.epsilon * ifft(champv, 1)
+    ifft!(champu, 1)
+    ifft!(champv, 1)
 
-    champu = transpose(champubar) .+ champu
-    champv = transpose(champvbar) .+ champv
+    champu .*= m.epsilon 
+    champv .*= m.epsilon 
 
-    champu = ffu .- dtauh1u .- champu
-    champv = ffv .- dtauh1v .- champv
+    champu .+= transpose(champubar)
+    champv .+= transpose(champvbar) 
 
-    champu = fft(champu, 1)
-    champv = fft(champv, 1)
+    champu .= ffu .- dtauh1u .- champu
+    champv .= ffv .- dtauh1v .- champv
+
+    fft!(champu, 1)
+    fft!(champv, 1)
 
     champmoyu = champu[1, :] / m.ntau
     champmoyv = champv[1, :] / m.ntau
@@ -262,11 +271,11 @@ function champs_2(m, t,
     champu[1, :] .= 0.0  
     champv[1, :] .= 0.0  
 
-    champu = champu ./ (1im * m.ktau)
-    champv = champv ./ (1im * m.ktau)
+    champu ./= (1im * m.ktau)
+    champv ./= (1im * m.ktau)
 
-    champu = ifft(champu, 1)
-    champv = ifft(champv, 1)
+    ifft!(champu, 1)
+    ifft!(champv, 1)
 
     champubar, champvbar, champu, champv, champmoyu, champmoyv
 
