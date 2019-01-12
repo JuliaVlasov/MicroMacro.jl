@@ -1,19 +1,16 @@
-using FFTW
+using FFTW, LinearAlgebra
 
-export DataSet
 
 """ 
-Class with initial data
- 
-Relativistic Klein-Gordon equation
- 
+Class with initial data Relativistic Klein-Gordon equation
 """
-
 struct DataSet
 
     nx        :: Int64  
+    xmin      :: Float64
+    xmax      :: Float64
     epsilon   :: Float64 
-    k         :: Vector{Float64}
+    kx        :: Vector{Float64}
     T         :: Float64
     Tfinal    :: Float64
     sigma     :: Int64
@@ -23,58 +20,33 @@ struct DataSet
     v         :: Array{ComplexF64,1}
     dx        :: Float64
     
-    function DataSet( dataset, xmin, xmax, nx, epsilon, Tfinal)
+    function DataSet( xmin, xmax, nx, epsilon, T, Tfinal)
 
-        k  = zeros(Float64, nx)
-        k .= 2 * pi / (xmax - xmin) * vcat(0:nx÷2-1,-nx÷2:-1)
-        T  = 2 * pi
+        kx  = zeros(Float64, nx)
+        kx .= 2 * pi / (xmax - xmin) * vcat(0:nx÷2-1,-nx÷2:-1)
 
         x   = zeros(Float64, nx)
         x  .= range(xmin, stop=xmax, length=nx+1)[1:end-1]
         dx  = (xmax - xmin) / nx
 
-        phi   = zeros(ComplexF64, nx)
-        gamma = zeros(ComplexF64, nx)
+        ϕ  = zeros(ComplexF64, nx)
+        γ  = zeros(ComplexF64, nx)
 
-        if dataset == 1
+        ϕ  .= (1 + 1im) .* cos.(x)
+        γ  .= (1 - 1im) .* sin.(x)
 
-            # example Bao-Dong
-            phi     .= 2 / (exp.(x .^ 2) .+ exp.(-x .^ 2))
-            gamma   .= 0.0 
-            sigma    = 1
-            llambda  = -4
-
-        elseif dataset == 2
-
-            # example Faou-Schratz 6.2
-            phi   .= (2 + 1im) / sqrt(5) * cos.(x)
-            gamma .= (1 + 1im) / sqrt(2) * sin.(x) .+ 0.5 * cos.(x)
-
-            # example Faou-Schratz 6.3
-            phi   .= cos.(x)
-            gamma .= 1 / 4 * sin(x) .+ 0.5 * cos(x)
-
-            sigma   = 1
-            llambda = -1
-
-        elseif dataset == 3
-
-            phi   .= (1 + 1im) * cos.(x)
-            gamma .= (1 - 1im) * sin.(x)
-
-            sigma   = 1
-            llambda = -1
-
-        end
+        sigma   = 1
+        llambda = -1
 
         u = zeros(ComplexF64, nx)
         v = zeros(ComplexF64, nx)
 
-        u .= phi .- 1im * ifft((1 .+ epsilon * k.^2) .^ (-1/2) .* fft(gamma))
-        v .= conj.(phi) .- 1im * ifft((1 .+ epsilon * k.^2) .^ (-1/2) .* fft(conj.(gamma)))
+        u .= ϕ .- 1im * ifft((1 .+ epsilon * kx.^2) .^ (-1/2) .* fft(γ,1), 1)
+        v .= conj.(ϕ) .- 1im * ifft((1 .+ epsilon * kx.^2) .^ (-1/2) .* fft(conj.(γ),1),1)
 
-        new(nx, epsilon, k, T, Tfinal, sigma, llambda, x, u, v, dx)
+        new(nx, xmin, xmax, epsilon, kx, T, Tfinal, sigma, llambda, x, u, v, dx)
 
     end
 
 end
+
