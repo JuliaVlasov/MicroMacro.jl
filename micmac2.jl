@@ -1,5 +1,4 @@
 using FFTW, LinearAlgebra
-using BenchmarkTools
 
 """ 
 Class with initial data Relativistic Klein-Gordon equation
@@ -667,6 +666,6 @@ data = DataSet(xmin, xmax, N, epsilon, T, Tfinal)
 dt = 2 ^ (-3) * Tfinal / 16
 
 m = MicMac(data, ntau)
-@btime u, v = run(m, dt)
+@time u, v = run(m, dt)
 
 uref, vref = compute_error(u, v, data)
