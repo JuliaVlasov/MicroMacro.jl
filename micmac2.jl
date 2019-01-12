@@ -340,13 +340,16 @@ function init_2!(champu   :: Array{ComplexF64,2},
 
 end
 
-function champs_2(m, t, 
-    fft_ubar :: Vector{ComplexF64}, 
-    fft_vbar :: Vector{ComplexF64}, 
-    fft_ug   :: Vector{ComplexF64}, 
-    fft_vg   :: Vector{ComplexF64})
+function champs_2(champu   :: Array{ComplexF64,2},
+                  champv   :: Array{ComplexF64,2},
+                  m        :: MicMac, 
+                  t        :: Float64, 
+                  fft_ubar :: Vector{ComplexF64}, 
+                  fft_vbar :: Vector{ComplexF64}, 
+                  fft_ug   :: Vector{ComplexF64}, 
+                  fft_vg   :: Vector{ComplexF64})
 
-    champu, champv = ftau(m, t, fft_ubar, fft_vbar)
+    ftau!(champu, champv, m, t, fft_ubar, fft_vbar)
 
     fft!(champu, 1)
     fft!(champv, 1)
@@ -512,7 +515,7 @@ function run(self, dt)
         iter = iter + 1
         dt = min(Tfinal-t, dt)
 
-        champubaru, champubarv, ichampgu, ichampgv, champmoyu, champmoyv = champs_2(self, t, fft_ubar, fft_vbar, fft_ug, fft_vg)
+        champubaru, champubarv, ichampgu, ichampgv, champmoyu, champmoyv = champs_2(champu, champv, self, t, fft_ubar, fft_vbar, fft_ug, fft_vg)
 
         fft_ubar12 = fft_ubar .+ dt / 2 * champubaru
         fft_vbar12 = fft_vbar .+ dt / 2 * champubarv
@@ -527,7 +530,7 @@ function run(self, dt)
           .- epsilon * reconstr(ichampgv, t / epsilon, T, self.ntau) 
           .+ dt / 2 * champmoyv )
 
-        champubaru, champubarv, ichampgu, ichampgv, champmoyu, champmoyv = champs_2(self, t + dt / 2, fft_ubar12, fft_vbar12, fft_ug12, fft_vg12)
+        champubaru, champubarv, ichampgu, ichampgv, champmoyu, champmoyv = champs_2(champu, champv, self, t + dt / 2, fft_ubar12, fft_vbar12, fft_ug12, fft_vg12)
 
         fft_ubar .+= dt * champubaru
         fft_vbar .+= dt * champubarv
@@ -560,7 +563,7 @@ function run(self, dt)
     ifft!(fft_u,1)
     ifft!(fft_v,1)
 
-    return fft_u, fft_v
+    fft_u, fft_v
 
 end
 
