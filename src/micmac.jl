@@ -7,8 +7,8 @@ mutable struct MicMac
     data      :: DataSet
     ntau      :: Int64
     ktau      :: Vector{Float64}
-    matr      :: Vector{ComplexF64}
-    conjmatr  :: Vector{ComplexF64}
+    matr      :: Array{ComplexF64,2}
+    conjmatr  :: Array{ComplexF64,2}
     A1        :: Vector{Float64}
     A2        :: Vector{Float64}
     sigma     :: Int64
@@ -38,10 +38,10 @@ mutable struct MicMac
         ktau     .= 2π / T * vcat(0:ntau÷2-1,-ntau÷2:-1)
         ktau[1]   = 1.0
 
-        matr      = zeros(ComplexF64,ntau)
-        conjmatr  = zeros(ComplexF64,ntau)
-        matr     .= exp.( 1im * tau)
-        conjmatr .= exp.(-1im * tau)
+        matr      = zeros(ComplexF64,(1,ntau))
+        conjmatr  = zeros(ComplexF64,(1,ntau))
+        matr     .= transpose(exp.( 1im * tau))
+        conjmatr .= transpose(exp.(-1im * tau))
 
         A1 = zeros(Float64, nx)
         A2 = zeros(Float64, nx)
@@ -89,23 +89,23 @@ function ftau!(champu :: Array{ComplexF64,2},
     m.v  .= exp.(1im * t * m.A1)
     m.v .*= fft_u
     ifft!(m.v,1)
-    m.ut .= m.v .* m.conjmatr'
+    m.ut .= m.v .* m.matr
 
     m.v  .= exp.(1im * t * m.A1)
     m.v .*= fft_v
     ifft!(m.v,1)
-    m.vt .= m.v .* m.conjmatr'
+    m.vt .= m.v .* m.matr
 
     m.ut = (m.ut .+ conj.(m.vt)) / 2
     m.vt = abs.(m.ut) .^ (2 * m.sigma) .* m.ut
 
     m.u .= -1im * m.llambda * m.A2 .* exp.(-1im * t * m.A1)
 
-    m.ut .= m.matr' .* m.vt
+    m.ut .= m.conjmatr .* m.vt
     fft!(m.ut,1)
     m.ut .*= m.u
 
-    m.vt .= m.matr' .* conj.(m.vt)
+    m.vt .= m.conjmatr .* conj.(m.vt)
     fft!(m.vt,1)
     m.vt .*= m.u
 
@@ -128,16 +128,16 @@ function ftau!(m, t, fft_u :: Array{ComplexF64,2},
     ifft!(m.ut,1)
     ifft!(m.vt,1)
 
-    m.ut .*= m.conjmatr'
-    m.vt .*= m.conjmatr'
+    m.ut .*= m.matr
+    m.vt .*= m.matr
 
     m.ut .= (m.ut .+ conj.(m.vt)) / 2
     m.vt .= abs.(m.ut) .^ (2 * m.sigma) .* m.ut
 
     m.u .= -1im * m.llambda .* m.A2 .* conj.(m.v) 
 
-    m.ut .= m.matr' .* m.vt
-    m.vt .= m.matr' .* conj.(m.vt)
+    m.ut .= m.conjmatr .* m.vt
+    m.vt .= m.conjmatr .* conj.(m.vt)
 
     fft!(m.ut,1)
     fft!(m.vt,1)
@@ -166,26 +166,26 @@ function duftau!(
     m.u .= exp.(1im * t * m.A1) 
     m.v .= -1im * m.llambda * m.A2 .* conj.(m.u)
 
-    m.ut .= (m.u .* fft_u) .* m.conjmatr'
+    m.ut .= (m.u .* fft_u) .* m.matr
     ifft!(m.ut, 1)
 
-    m.vt .= (m.u .* fft_v) .* m.conjmatr'
+    m.vt .= (m.u .* fft_v) .* m.matr
     ifft!(m.vt, 1)
 
     m.z  .= (m.ut  .+ conj.(m.vt)) / 2
 
-    m.ut .= (m.u .* fft_du) .* m.conjmatr'
+    m.ut .= (m.u .* fft_du) .* m.matr
     ifft!(m.ut, 1)
 
-    m.vt .= (m.u .* fft_dv) .* m.conjmatr'
+    m.vt .= (m.u .* fft_dv) .* m.matr
     ifft!(m.vt, 1)
 
     m.dz .= (m.ut .+ conj.(m.vt)) / 2
 
     m.z = 2 * abs.(m.z).^2 .* m.dz .+ m.z.^2 .* conj.(m.dz)
 
-    m.ut .= m.matr' .* m.z
-    m.vt .= m.matr' .* conj.(m.z)
+    m.ut .= m.conjmatr .* m.z
+    m.vt .= m.conjmatr .* conj.(m.z)
 
     fft!(m.ut,1)
     fft!(m.vt,1)
@@ -213,23 +213,23 @@ function dtftau!(champu1 :: Array{ComplexF64, 2},
     m.u .= exp.(1im * t * m.A1) 
     m.v .= -1im * m.llambda * m.A2 .* conj.(m.u)
 
-    m.ut .= (m.u .* fft_u) .* m.conjmatr'
-    m.vt .= (m.u .* fft_v) .* m.conjmatr'
+    m.ut .= (m.u .* fft_u) .* m.matr
+    m.vt .= (m.u .* fft_v) .* m.matr
 
     ifft!(m.ut, 1)
     ifft!(m.vt, 1)
 
     m.z .= ( m.ut .+ conj.(m.vt)) / 2
 
-    m.ut .= ifft(m.u .* (1im * m.A1) .* fft_u,1) .* m.conjmatr'
-    m.vt .= ifft(m.u .* (1im * m.A1) .* fft_v,1) .* m.conjmatr'
+    m.ut .= ifft(m.u .* (1im * m.A1) .* fft_u,1) .* m.matr
+    m.vt .= ifft(m.u .* (1im * m.A1) .* fft_v,1) .* m.matr
 
     m.dz .= (m.ut .+ conj.(m.vt)) / 2
 
     m.dz .= 2 * abs.(m.z).^2 .* m.dz .+ m.z.^2 .* conj.(m.dz)
 
-    m.ut .= m.matr' .* m.dz
-    m.vt .= m.matr' .* conj.(m.dz)
+    m.ut .= m.conjmatr .* m.dz
+    m.vt .= m.conjmatr .* conj.(m.dz)
 
     fft!(m.ut, 1)
     fft!(m.vt, 1)
@@ -242,8 +242,8 @@ function dtftau!(champu1 :: Array{ComplexF64, 2},
 
     m.z .= abs.(m.z).^2 .* m.z
 
-    m.ut .= m.matr' .* m.z
-    m.vt .= m.matr' .* conj.(m.z)
+    m.ut .= m.conjmatr .* m.z
+    m.vt .= m.conjmatr .* conj.(m.z)
 
     fft!(m.ut, 1)
     fft!(m.vt, 1)
@@ -437,8 +437,6 @@ function solve(self, dt)
     A1 = self.A1
     A2 = self.A2
 
-    matr     = self.matr
-    conjmatr = self.conjmatr
     ntau     = self.ntau
 
     t = 0.0
