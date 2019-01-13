@@ -9,11 +9,11 @@ const epsilon  = 1.0
 const xmin     = 0
 const xmax     = 2π
 const T        = 2π
-const nx       = 64
-const ntau     = 32
+const nx       = 256
+const ntau     = 128
 const Tfinal   = 0.25
 
-println(" epsilon : $nx ")
+println(" epsilon : $epsilon ")
 println(" nx      : $nx ")
 println(" ntau    : $ntau ")
 
