@@ -1,1 +1,3 @@
-# MicroMacro.jl Documentation
+# MicroMacro.jl
+
+Documentation for MicroMacro.jl

@@ -1,15 +1,13 @@
-push!(LOAD_PATH,"../src/")
-
-using MicroMacro
 using Documenter
+using MicroMacro
 
-makedocs(modules=[MicroMacro],
-         doctest = false,
-         format = :html,
-         sitename = "MicroMacro.jl",
-         pages = ["Documentation"    => "index.md"])
+makedocs(
+    sitename = "MicroMacro",
+    format = :html,
+    modules = [MicroMacro]
+)
 
 deploydocs(
     deps   = Deps.pip("mkdocs", "python-markdown-math"),
     repo   = "github.com:JuliaVlasov/MicroMacro.jl.git",
- )
+)
