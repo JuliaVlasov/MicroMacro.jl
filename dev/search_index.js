@@ -2,18 +2,18 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "#",
-    "page": "Documentation",
-    "title": "Documentation",
+    "page": "MicroMacro.jl",
+    "title": "MicroMacro.jl",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "#MicroMacro.jl-Documentation-1",
-    "page": "Documentation",
-    "title": "MicroMacro.jl Documentation",
+    "location": "#MicroMacro.jl-1",
+    "page": "MicroMacro.jl",
+    "title": "MicroMacro.jl",
     "category": "section",
-    "text": ""
+    "text": "Documentation for MicroMacro.jl"
 },
 
 ]}
