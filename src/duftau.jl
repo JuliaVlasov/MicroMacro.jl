@@ -19,7 +19,7 @@ function duftau!(
     m.vt .= (m.u .* fft_v) .* m.matr
     ifft!(m.vt, 1)
 
-    m.z  .= (m.ut  .+ conj.(m.vt)) / 2
+    z  = (m.ut  .+ conj.(m.vt)) / 2
 
     m.ut .= (m.u .* fft_du) .* m.matr
     ifft!(m.ut, 1)
@@ -27,12 +27,12 @@ function duftau!(
     m.vt .= (m.u .* fft_dv) .* m.matr
     ifft!(m.vt, 1)
 
-    m.dz .= (m.ut .+ conj.(m.vt)) / 2
+    dz = (m.ut .+ conj.(m.vt)) / 2
 
-    m.z = 2 * abs.(m.z).^2 .* m.dz .+ m.z.^2 .* conj.(m.dz)
+    z .= 2 * abs.(z).^2 .* dz .+ z.^2 .* conj.(dz)
 
-    m.ut .= m.conjmatr .* m.z
-    m.vt .= m.conjmatr .* conj.(m.z)
+    m.ut .= m.conjmatr .* z
+    m.vt .= m.conjmatr .* conj.(z)
 
     fft!(m.ut,1)
     fft!(m.vt,1)
