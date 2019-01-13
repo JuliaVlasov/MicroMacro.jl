@@ -22,7 +22,7 @@ begin
 
         for (kk, epsilon) in enumerate(epsilons)
     
-            data = DataSet(xmin, xmax, nx, epsilon, T, Tfinal)
+            data = CosSin(xmin, xmax, nx, epsilon, T, Tfinal)
     
             for hh in 1:nb_dt
     
