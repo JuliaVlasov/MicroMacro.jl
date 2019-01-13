@@ -38,7 +38,7 @@ etime = @elapsed for nx in size_x, ntau in size_tau
 
             solver = MicMac(data, ntau)
 
-            u, v = run(solver, dtmicmac)
+            u, v = solve(solver, dtmicmac)
 
             tabdt[hh] = dtmicmac
 
@@ -70,4 +70,5 @@ for j in 1:size(taberr)[2]
 end
 
 xlabel!(p[1,2],"epsilon")
+display(p)
 savefig("errors.png")
