@@ -5,7 +5,7 @@ function ftau!(champu :: Array{ComplexF64,2},
                fft_u  :: Vector{ComplexF64}, 
                fft_v  :: Vector{ComplexF64})
 
-    m.v .= exp.(1im * t * m.A1)
+    m.v  .= exp.(1im * t * m.A1)
     m.u .= -1im * m.llambda * m.A2 .* conj.(m.v)
 
     m.v .*= fft_u

@@ -18,6 +18,8 @@ mutable struct MicMac
     v         :: Array{ComplexF64,1}
     ut        :: Array{ComplexF64,2}
     vt        :: Array{ComplexF64,2}
+    z         :: Array{ComplexF64,2}
+    dz        :: Array{ComplexF64,2}
 
     function MicMac( data :: DataSet, ntau :: Int64 )
 
@@ -56,9 +58,11 @@ mutable struct MicMac
         v  = zeros(ComplexF64,nx)
         ut = zeros(ComplexF64,(nx, ntau))
         vt = zeros(ComplexF64,(nx, ntau))
+        z  = zeros(ComplexF64,(nx, ntau))
+        dz = zeros(ComplexF64,(nx, ntau))
 
         new( data, ntau, ktau, matr, conjmatr, A1 , A2, 
-             sigma, llambda, epsilon, u, v, ut, vt)
+             sigma, llambda, epsilon, u, v, ut, vt, z, dz)
 
     end
 
