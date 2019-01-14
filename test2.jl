@@ -4,6 +4,7 @@ gr()
 
 include("src/dataset.jl")
 include("src/micmac.jl")
+include("src/error.jl")
 
 const epsilon  = 1.0
 const xmin     = 0
