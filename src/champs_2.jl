@@ -19,8 +19,11 @@ function champs_2!(champu   :: Array{ComplexF64,2},
     champu[1, :] .= 0.0
     champv[1, :] .= 0.0
 
-    dtauh1u = ifft(champu, 1)
-    dtauh1v = ifft(champv, 1)
+    dtauh1u = copy(champu)
+    dtauh1v = copy(champv)
+
+    ifft!(dtauh1u, 1)
+    ifft!(dtauh1v, 1)
 
     champu ./= (1im * m.ktau)
     champv ./= (1im * m.ktau)
@@ -34,11 +37,11 @@ function champs_2!(champu   :: Array{ComplexF64,2},
     champu .+= transpose(fft_ubar)
     champv .+= transpose(fft_vbar) 
 
-    ffu    = similar(champu)
-    ffv    = similar(champv)
+    ffu    = copy(champu)
+    ffv    = copy(champv)
 
-    ffu   .= champu .+ transpose(fft_ug)
-    ffv   .= champv .+ transpose(fft_vg)
+    ffu   .+= transpose(fft_ug)
+    ffv   .+= transpose(fft_vg)
 
     ftau!(m, t, ffu, ffv)
 
@@ -53,6 +56,9 @@ function champs_2!(champu   :: Array{ComplexF64,2},
     duftau!(champu, champv, m, t, fft_ubar, fft_vbar, champubar, champvbar)
 
     dtftau!(champu1, champv1, champu2, champv2, m, t, fft_ubar, fft_vbar)
+
+    fft_ubar .= champubar
+    fft_vbar .= champvbar
 
     champu .+= champu1 .+ champu2
     champv .+= champv1 .+ champv2
@@ -81,22 +87,18 @@ function champs_2!(champu   :: Array{ComplexF64,2},
     fft!(champu, 1)
     fft!(champv, 1)
 
-    champmoyu = champu[1, :] / m.ntau
-    champmoyv = champv[1, :] / m.ntau
+    fft_ug .= champu[1, :] ./ m.ntau
+    fft_vg .= champv[1, :] ./ m.ntau
 
     champu[1, :] .= 0.0  
     champv[1, :] .= 0.0  
 
-    champu ./= (1im * m.ktau)
-    champv ./= (1im * m.ktau)
+    champu ./= (1im .* m.ktau)
+    champv ./= (1im .* m.ktau)
 
     ifft!(champu, 1)
     ifft!(champv, 1)
 
-    fft_ubar .= champubar
-    fft_vbar .= champvbar
-    fft_ug   .= champmoyu
-    fft_vg   .= champmoyv
 
 end
 

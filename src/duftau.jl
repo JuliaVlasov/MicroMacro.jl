@@ -10,16 +10,16 @@ function duftau!(
 
     sigma = 1
 
-    m.u .= exp.(1im * t * m.A1) 
-    m.v .= -1im * m.llambda * m.A2 .* conj.(m.u)
+    m.u .= exp.(1im .* t .* m.A1) 
+    m.v .= -1im .* m.llambda .* m.A2 .* conj.(m.u)
 
-    m.ut .= (m.u .* fft_u) .* m.matr
+    m.ut .= (fft_u .* m.u) .* m.matr
     ifft!(m.ut, 1)
 
-    m.vt .= (m.u .* fft_v) .* m.matr
+    m.vt .= (fft_v .* m.u) .* m.matr
     ifft!(m.vt, 1)
 
-    m.z  .= (m.ut  .+ conj.(m.vt)) / 2
+    m.z  .= (m.ut  .+ conj.(m.vt)) ./ 2
 
     m.ut .= (m.u .* fft_du) .* m.matr
     ifft!(m.ut, 1)
@@ -27,12 +27,12 @@ function duftau!(
     m.vt .= (m.u .* fft_dv) .* m.matr
     ifft!(m.vt, 1)
 
-    m.dz .= (m.ut .+ conj.(m.vt)) / 2
+    m.ut .= (m.ut .+ conj.(m.vt)) ./ 2
 
-    m.z = 2 * abs.(m.z).^2 .* m.dz .+ m.z.^2 .* conj.(m.dz)
+    m.vt .= 2 .* abs.(m.z).^2 .* m.ut .+ m.z.^2 .* conj.(m.ut)
 
-    m.ut .= m.conjmatr .* m.z
-    m.vt .= m.conjmatr .* conj.(m.z)
+    m.ut .= m.conjmatr .* m.vt
+    m.vt .= m.conjmatr .* conj.(m.vt)
 
     fft!(m.ut,1)
     fft!(m.vt,1)
