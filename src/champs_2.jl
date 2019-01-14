@@ -1,9 +1,5 @@
 function champs_2!(champu   :: Array{ComplexF64,2},
                    champv   :: Array{ComplexF64,2},
-                   champu1  :: Array{ComplexF64,2},
-                   champv1  :: Array{ComplexF64,2},
-                   champu2  :: Array{ComplexF64,2},
-                   champv2  :: Array{ComplexF64,2},
                    m        :: MicMac, 
                    t        :: Float64, 
                    fft_ubar :: Vector{ComplexF64}, 
@@ -55,13 +51,11 @@ function champs_2!(champu   :: Array{ComplexF64,2},
 
     duftau!(champu, champv, m, t, fft_ubar, fft_vbar, champubar, champvbar)
 
-    dtftau!(champu1, champv1, champu2, champv2, m, t, fft_ubar, fft_vbar)
+    dtftau!(champu, champv, m, t, fft_ubar, fft_vbar)
 
     fft_ubar .= champubar
     fft_vbar .= champvbar
 
-    champu .+= champu1 .+ champu2
-    champv .+= champv1 .+ champv2
 
     fft!(champu, 1)
     fft!(champv, 1)

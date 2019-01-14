@@ -1,7 +1,5 @@
-function dtftau!(champu1 :: Array{ComplexF64, 2},
-                 champv1 :: Array{ComplexF64, 2},
-                 champu2 :: Array{ComplexF64, 2},
-                 champv2 :: Array{ComplexF64, 2},
+function dtftau!(champu  :: Array{ComplexF64, 2},
+                 champv  :: Array{ComplexF64, 2},
                  m       :: MicMac, 
                  t       :: Float64, 
                  fft_u   :: Vector{ComplexF64}, 
@@ -42,8 +40,8 @@ function dtftau!(champu1 :: Array{ComplexF64, 2},
     m.ut .*= m.v
     m.vt .*= m.v 
 
-    transpose!(champu1, m.ut)
-    transpose!(champv1, m.vt)
+    champu .+= transpose(m.ut)
+    champv .+= transpose(m.vt)
 
     m.z  .= abs.(m.z).^2 .* m.z
 
@@ -56,9 +54,8 @@ function dtftau!(champu1 :: Array{ComplexF64, 2},
     m.ut .*= (m.v .* (-1im .* m.A1))
     m.vt .*= (m.v .* (-1im .* m.A1)) 
 
-    transpose!(champu2, m.ut) 
-    transpose!(champv2, m.vt)
-
+    champu .+= transpose(m.ut)
+    champv .+= transpose(m.vt)
 
 end
 

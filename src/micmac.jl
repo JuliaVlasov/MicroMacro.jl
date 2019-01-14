@@ -113,11 +113,6 @@ function solve(self, dt)
     ichampgu = zeros(ComplexF64,(ntau,nx))
     ichampgv = zeros(ComplexF64,(ntau,nx))
 
-    champu1 = zeros(ComplexF64,(ntau,nx))
-    champv1 = zeros(ComplexF64,(ntau,nx))
-    champu2 = zeros(ComplexF64,(ntau,nx))
-    champv2 = zeros(ComplexF64,(ntau,nx))
-
     init_2!(ichampgu, ichampgv, self, t, fft_ubar, fft_vbar, fft_ug, fft_vg )
 
     champubaru = similar(fft_ubar)
@@ -137,8 +132,6 @@ function solve(self, dt)
         champmoyv  .= fft_vg
 
         champs_2!(ichampgu, ichampgv, 
-                  champu1, champv1,
-                  champu2, champv2,
                   self, t, 
                   champubaru, champubarv, 
                   champmoyu, champmoyv ) 
@@ -150,30 +143,29 @@ function solve(self, dt)
 
         champmoyu  .*= hdt 
         champmoyu  .+= fft_ug
-        champmoyu  .+= epsilon * reconstr(ichampgu, (t+hdt) / epsilon, T, ntau)
-        champmoyu  .-= epsilon * reconstr(ichampgu,  t      / epsilon, T, ntau) 
+        champmoyu  .+= epsilon .* reconstr(ichampgu, (t+hdt) / epsilon, T, ntau)
+        champmoyu  .-= epsilon .* reconstr(ichampgu,  t      / epsilon, T, ntau) 
 
         champmoyv  .*= hdt 
         champmoyv  .+= fft_vg 
-        champmoyv  .+= epsilon * reconstr(ichampgv, (t+hdt) / epsilon, T, ntau) 
-        champmoyv  .-= epsilon * reconstr(ichampgv,  t      / epsilon, T, ntau) 
+        champmoyv  .+= epsilon .* reconstr(ichampgv, (t+hdt) / epsilon, T, ntau) 
+        champmoyv  .-= epsilon .* reconstr(ichampgv,  t      / epsilon, T, ntau) 
 
         champs_2!(ichampgu, ichampgv, 
-                  champu1, champv1,
-                  champu2, champv2,
                   self, t + hdt, 
-                  champubaru, champubarv, champmoyu, champmoyv ) 
+                  champubaru, champubarv, 
+                  champmoyu, champmoyv ) 
 
-        fft_ubar .+= dt * champubaru
-        fft_vbar .+= dt * champubarv
+        fft_ubar .+= dt .* champubaru
+        fft_vbar .+= dt .* champubarv
 
-        fft_ug .+= epsilon * reconstr(ichampgu, (t + dt) / epsilon, T, ntau) 
-        fft_ug .-= epsilon * reconstr(ichampgu,  t       / epsilon, T, ntau) 
-        fft_ug .+= dt * champmoyu
+        fft_ug .+= epsilon .* reconstr(ichampgu, (t + dt) / epsilon, T, ntau) 
+        fft_ug .-= epsilon .* reconstr(ichampgu,  t       / epsilon, T, ntau) 
+        fft_ug .+= dt .* champmoyu
 
-        fft_vg .+= epsilon * reconstr(ichampgv, (t + dt) / epsilon, T, ntau) 
-        fft_vg .-= epsilon * reconstr(ichampgv,  t       / epsilon, T, ntau) 
-        fft_vg .+= dt * champmoyv
+        fft_vg .+= epsilon .* reconstr(ichampgv, (t + dt) / epsilon, T, ntau) 
+        fft_vg .-= epsilon .* reconstr(ichampgv,  t       / epsilon, T, ntau) 
+        fft_vg .+= dt .* champmoyv
 
         t = t + dt
 
@@ -187,8 +179,8 @@ function solve(self, dt)
 
     end
 
-    fft_u .*= exp.(1im * sqrt.(1 .+ epsilon * kx .^ 2) * t / epsilon)
-    fft_v .*= exp.(1im * sqrt.(1 .+ epsilon * kx .^ 2) * t / epsilon) 
+    fft_u .*= exp.(1im .* sqrt.(1 .+ epsilon * kx .^ 2) .* t / epsilon)
+    fft_v .*= exp.(1im .* sqrt.(1 .+ epsilon * kx .^ 2) .* t / epsilon) 
 
     ifft!(fft_u,1)
     ifft!(fft_v,1)
